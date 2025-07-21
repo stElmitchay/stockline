@@ -31,7 +31,7 @@ export function WalletCard({
 	const getWalletDisplayName = (account: WalletAccount) => {
 		if (account.walletClientType === "backpack") return "Backpack";
 		if (account.walletClientType === "privy") {
-			return `Privy ${account.chainType === "ethereum" ? "ETH" : "SOL"} ${account.walletIndex !== undefined ? `#${account.walletIndex + 1}` : ""}`;
+			return `Privy SOL ${account.walletIndex !== undefined ? `#${account.walletIndex + 1}` : ""}`;
 		}
 		return account.walletClientType;
 	};
@@ -74,10 +74,8 @@ export function WalletCard({
 					</div>
 				</div>
 				<div className="flex items-center justify-between">
-					<Badge
-						variant={account.chainType === "solana" ? "default" : "secondary"}
-					>
-						{account.chainType.toUpperCase()}
+					<Badge variant="default">
+						SOL
 					</Badge>
 					{isActive && <Badge variant="outline">Active</Badge>}
 				</div>

@@ -17,8 +17,9 @@ import {
 	SystemProgram,
 	Transaction,
 } from "@solana/web3.js";
-import { FileSignature, MessageSquare, Send, Wallet } from "lucide-react";
+import { FileSignature, MessageSquare, Send, Wallet, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { ActionButton } from "@/components/actionButton";
 import { SendTransactionModal } from "@/components/modals/sendTransactionModal";
@@ -159,7 +160,7 @@ export default function Dashboard() {
 
 	const getWalletDisplayName = (account: any) => {
 		if (account?.walletClientType === "privy") {
-			return `Privy ${account.chainType === "ethereum" ? "ETH" : "SOL"} ${account.walletIndex !== undefined ? `#${account.walletIndex + 1}` : ""}`;
+			return `Privy SOL ${account.walletIndex !== undefined ? `#${account.walletIndex + 1}` : ""}`;
 		}
 		return account?.walletClientType;
 	};
@@ -199,6 +200,15 @@ export default function Dashboard() {
 							Manage your wallets and transactions
 						</p>
 					</div>
+					<div className="flex items-center gap-4">
+						<Link
+							href="/wallet"
+							className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+						>
+							<Eye className="h-4 w-4" />
+							View Wallet Details
+						</Link>
+					</div>
 
 					<button type="button">
 						<span
@@ -213,39 +223,43 @@ export default function Dashboard() {
 					</button>
 				</div>
 
-				{/* Active Wallet Card */}
-				<div className="bg-gray-900 border-2 border-blue-500 rounded-lg p-6">
-					<div className="space-y-4">
-						<div className="flex items-center gap-3">
-							<Wallet className="h-6 w-6 text-blue-500" />
-							<div>
-								<h2 className="text-xl font-semibold text-white">
-									Active Wallet
-								</h2>
-								<p className="text-gray-400">
-									Currently selected wallet for transactions
-								</p>
+				{/* Active Wallet Card - Only show if it's a Solana wallet */}
+				{userData?.wallet?.chainType === 'solana' && (
+					<div className="bg-gray-900 border-2 border-blue-500 rounded-lg p-6">
+						<div className="space-y-4">
+							<div className="flex items-center gap-3">
+								<Wallet className="h-6 w-6 text-blue-500" />
+								<div>
+									<h2 className="text-xl font-semibold text-white">
+										Active Wallet
+									</h2>
+									<p className="text-gray-400">
+										Currently selected wallet for transactions
+									</p>
+								</div>
+							</div>
+							<div className="flex items-center justify-between">
+								<div>
+									<p className="font-medium text-white">
+										{getWalletDisplayName(userData?.wallet)}
+									</p>
+									<p className="text-sm text-gray-400">
+										{userData?.wallet?.address}
+									</p>
+								</div>
+								<Badge>SOL</Badge>
 							</div>
 						</div>
-						<div className="flex items-center justify-between">
-							<div>
-								<p className="font-medium text-white">
-									{getWalletDisplayName(userData?.wallet)}
-								</p>
-								<p className="text-sm text-gray-400">
-									{userData?.wallet?.address}
-								</p>
-							</div>
-							<Badge>{userData?.wallet?.chainType.toUpperCase()}</Badge>
-						</div>
-					</div>
 				</div>
+				)}
 
 				{/* Linked Accounts */}
 				<div className="space-y-4">
 					<h2 className="text-2xl font-semibold text-white">Linked Accounts</h2>
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{userData?.linkedAccounts.map((account, index) => (
+						{userData?.linkedAccounts
+						?.filter((account: any) => account.chainType === 'solana')
+						.map((account, index) => (
 							<WalletCard
 								key={`${account.type}-${index}`}
 								account={account as WalletAccount}
@@ -273,7 +287,7 @@ export default function Dashboard() {
 						<ActionButton
 							icon={<MessageSquare className="h-4 w-4" />}
 							label="Sign Message"
-							wallets={userData?.linkedAccounts as WalletAccount[]}
+							wallets={userData?.linkedAccounts?.filter((account: any) => account.chainType === 'solana') as WalletAccount[] || []}
 							onWalletSelect={(wallet) =>
 								handleWalletSelect(wallet, "signMessage")
 							}
@@ -281,7 +295,7 @@ export default function Dashboard() {
 						<ActionButton
 							icon={<FileSignature className="h-4 w-4" />}
 							label="Sign Transaction"
-							wallets={userData?.linkedAccounts as WalletAccount[]}
+							wallets={userData?.linkedAccounts?.filter((account: any) => account.chainType === 'solana') as WalletAccount[] || []}
 							onWalletSelect={(wallet) =>
 								handleWalletSelect(wallet, "signTransaction")
 							}
@@ -289,7 +303,7 @@ export default function Dashboard() {
 						<ActionButton
 							icon={<Send className="h-4 w-4" />}
 							label="Send Transaction"
-							wallets={userData?.linkedAccounts as WalletAccount[]}
+							wallets={userData?.linkedAccounts?.filter((account: any) => account.chainType === 'solana') as WalletAccount[] || []}
 							onWalletSelect={(wallet) =>
 								handleWalletSelect(wallet, "sendTransaction")
 							}

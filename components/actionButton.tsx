@@ -34,7 +34,7 @@ export function ActionButton({
 	const getWalletDisplayName = (account: WalletAccount) => {
 		if (account.walletClientType === "backpack") return "Backpack";
 		if (account.walletClientType === "privy") {
-			return `Privy ${account.chainType === "ethereum" ? "ETH" : "SOL"} ${account.walletIndex !== undefined ? `#${account.walletIndex + 1}` : ""}`;
+			return `Privy SOL ${account.walletIndex !== undefined ? `#${account.walletIndex + 1}` : ""}`;
 		}
 		return account.walletClientType;
 	};
@@ -64,12 +64,8 @@ export function ActionButton({
 									{formatAddress(wallet.address)}
 								</span>
 							</div>
-							<Badge
-								variant={
-									wallet.chainType === "solana" ? "default" : "secondary"
-								}
-							>
-								{wallet.chainType.toUpperCase()}
+							<Badge variant="default">
+								SOL
 							</Badge>
 						</div>
 					</DropdownItem>
