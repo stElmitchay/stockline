@@ -17,7 +17,7 @@ import {
 	SystemProgram,
 	Transaction,
 } from "@solana/web3.js";
-import { FileSignature, MessageSquare, Send, Wallet, Eye } from "lucide-react";
+import { FileSignature, MessageSquare, Send, Wallet, Eye, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
@@ -201,6 +201,13 @@ export default function Dashboard() {
 						</p>
 					</div>
 					<div className="flex items-center gap-4">
+						<Link
+							href="/stocks"
+							className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+						>
+							<TrendingUp className="h-4 w-4" />
+							Stock Marketplace
+						</Link>
 						<Link
 							href="/wallet"
 							className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
