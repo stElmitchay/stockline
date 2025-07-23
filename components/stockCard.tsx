@@ -4,18 +4,9 @@ import { useState } from "react";
 import { TrendingUp, TrendingDown, Copy, ExternalLink, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-interface Stock {
-  symbol: string;
-  name: string;
-  solanaAddress: string;
-  price: number;
-  change24h: number;
-  marketCap: number;
-  volume24h: number;
-  sector: string;
-  logo?: string;
-}
+import { Stock } from "@/types/stock";
+import { formatPrice, formatMarketCap, formatVolume, formatAddress } from "@/utils/formatters";
+import { API_CONFIG, EXTERNAL_URLS } from "@/constants";
 
 interface StockCardProps {
   stock: Stock;
@@ -24,51 +15,21 @@ interface StockCardProps {
 export function StockCard({ stock }: StockCardProps) {
   const [copied, setCopied] = useState(false);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(price);
-  };
 
-  const formatMarketCap = (marketCap: number) => {
-    if (marketCap >= 1e12) {
-      return `$${(marketCap / 1e12).toFixed(2)}T`;
-    } else if (marketCap >= 1e9) {
-      return `$${(marketCap / 1e9).toFixed(2)}B`;
-    } else if (marketCap >= 1e6) {
-      return `$${(marketCap / 1e6).toFixed(2)}M`;
-    }
-    return `$${marketCap.toLocaleString()}`;
-  };
 
-  const formatVolume = (volume: number) => {
-    if (volume >= 1e9) {
-      return `$${(volume / 1e9).toFixed(2)}B`;
-    } else if (volume >= 1e6) {
-      return `$${(volume / 1e6).toFixed(2)}M`;
-    } else if (volume >= 1e3) {
-      return `$${(volume / 1e3).toFixed(2)}K`;
-    }
-    return `$${volume.toLocaleString()}`;
-  };
 
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
 
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), API_CONFIG.COPY_FEEDBACK_DURATION);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
   };
 
-  const isPositive = stock.change24h >= 0;
+  const isPositive = (stock.change24h ?? 0) >= 0;
 
   return (
     <div className="group bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6 hover:border-gray-700 hover:bg-gray-900/70 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10">
@@ -85,9 +46,6 @@ export function StockCard({ stock }: StockCardProps) {
             <p className="text-gray-400 text-sm font-mono">{stock.symbol}</p>
           </div>
         </div>
-        <Badge variant="secondary" className="text-xs">
-          {stock.sector}
-        </Badge>
       </div>
 
       {/* Price and Change */}
@@ -103,7 +61,7 @@ export function StockCard({ stock }: StockCardProps) {
           ) : (
             <TrendingDown className="h-4 w-4" />
           )}
-          {isPositive ? '+' : ''}{stock.change24h.toFixed(2)}%
+          {isPositive ? '+' : ''}{(stock.change24h ?? 0).toFixed(2)}%
         </div>
       </div>
 
@@ -144,7 +102,10 @@ export function StockCard({ stock }: StockCardProps) {
         <Button 
           size="sm" 
           className="flex-1"
-          onClick={() => window.open(`https://solscan.io/token/${stock.solanaAddress}`, '_blank')}
+          onClick={() => {
+            const solscanUrl = stock.solscanUrl || `${EXTERNAL_URLS.SOLSCAN_BASE}${stock.solanaAddress}`;
+            window.open(solscanUrl, '_blank');
+          }}
         >
           <Eye className="h-4 w-4 mr-2" />
           View Details

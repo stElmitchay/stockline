@@ -1,36 +1,171 @@
-# Privy Auth + Solana `create-next-solana-app` Starter
+# Solana xStocks Marketplace
 
-This is a template for integrating Privy's Solana capabilities into a Next.js application. It provides a simple setup for wallet login, embedded wallets, and transaction signing using the [Privy React SDK](https://docs.privy.io/basics/react/installation).
+A modern, responsive marketplace for Solana-based tokenized stocks (xStocks) built with Next.js, TypeScript, and Tailwind CSS.
 
-This demo uses NextJS's [App Router](https://nextjs.org/docs/app).
+## Features
 
-## Setup
+### 🏪 Stock Marketplace
+- Browse 25+ tokenized stocks with real-time data
+- Advanced filtering by sector (Technology, Healthcare, Finance, etc.)
+- Multiple sorting options (Market Cap, Price, 24h Change, Volume)
+- Real-time search functionality
+- Responsive grid layout with detailed stock cards
 
-1. Clone this repository and open it in your terminal.
+### 📊 Stock Information
+- Current price and 24h price change
+- Market capitalization and trading volume
+- Sector classification and stock symbols
+- Solana blockchain integration with Solscan links
+- Copy-to-clipboard functionality for addresses
 
-```bash
-git clone https://github.com/privy-io/create-next-solana-app.git && cd create-next-solana-app
+### 🔗 Blockchain Integration
+- Direct links to Solscan for token details
+- Solana address display and copying
+- Wallet connection interface
+- Transaction explorer integration
+
+## Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: Custom components with Lucide React icons
+- **State Management**: React hooks with custom useStocks hook
+- **Data Storage**: JSON-based data management
+
+## Project Structure
+
+```
+├── app/
+│   ├── stocks/
+│   │   └── page.tsx          # Main stocks marketplace page
+│   ├── wallet/
+│   │   └── page.tsx          # Wallet connection page
+│   └── layout.tsx            # Root layout
+├── components/
+│   ├── ui/                   # Reusable UI components
+│   ├── stockCard.tsx         # Individual stock card component
+│   └── stockFilters.tsx      # Filtering and sorting controls
+├── data/
+│   └── stocks.json           # Stock data storage
+├── hooks/
+│   └── useStocks.ts          # Custom hook for stock data management
+├── types/
+│   └── stock.ts              # TypeScript type definitions
+├── utils/
+│   └── formatters.ts         # Utility functions for data formatting
+└── constants/
+    └── index.ts              # Application constants and configuration
 ```
 
-2. Install the dependencies.
+## Getting Started
 
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd create-solana-next-app
+```
+
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Define the environment variables in a `.env.local` file.
-
+3. Run the development server:
 ```bash
-cp .env.local.example .env.local
+npm run dev
 ```
 
-## Building locally
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-In your project directory, run npm run dev. You can now visit [http://localhost:3000](http://localhost:3000) to see your app and login with Privy!
+### Available Scripts
 
-## Check out
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
 
-- `components/providers.tsx` for how to use the `PrivyProvider` and initialize it with your Privy App ID.
-- `app/page.tsx` for how to verify if a user is logged in from a server component.
-- `components/loginButton.tsx` for how to use the `useLogin` Privy hook to log in a user and create an embedded wallet.
-- `app/dashboard/page.tsx` for how to use the `usePrivy` hook to access the Privy SDK in a client component, and how to use the embedded and EOA wallets to sign a message and send a transaction.
+## Usage
+
+### Browsing Stocks
+1. Navigate to `/stocks` to view the marketplace
+2. Use the search bar to find specific stocks
+3. Filter by sector using the dropdown
+4. Sort by different criteria (market cap, price, etc.)
+
+### Stock Details
+- Click "View Details" to open Solscan token page
+- Copy Solana addresses using the copy button
+- View comprehensive stock information in cards
+
+### Wallet Integration
+- Visit `/wallet` for wallet connection interface
+- View transaction history and account details
+
+## Data Management
+
+### Stock Data Structure
+Each stock in `data/stocks.json` contains:
+```json
+{
+  "symbol": "AAPLx",
+  "name": "Apple Inc.",
+  "price": 150.25,
+  "change24h": 2.5,
+  "marketCap": 2500000000,
+  "volume": 50000000,
+  "sector": "Technology",
+  "solanaAddress": "...",
+  "solscanUrl": "https://solscan.io/token/..."
+}
+```
+
+### Adding New Stocks
+1. Add stock data to `data/stocks.json`
+2. Include all required fields
+3. Optionally add specific Solscan URL
+
+## Customization
+
+### Constants Configuration
+Modify `constants/index.ts` to adjust:
+- API loading delays
+- UI configuration
+- Default values
+- External URLs
+
+### Styling
+- Tailwind CSS classes for responsive design
+- Custom components in `components/ui/`
+- Consistent color scheme and typography
+
+### Type Safety
+- Comprehensive TypeScript interfaces in `types/stock.ts`
+- Strict type checking throughout the application
+- Custom hooks with proper typing
+
+## Performance Features
+
+- **Optimized Rendering**: Efficient filtering and sorting
+- **Responsive Design**: Mobile-first approach
+- **Code Splitting**: Next.js automatic optimization
+- **Custom Hooks**: Reusable state management
+- **Utility Functions**: Centralized formatting logic
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.

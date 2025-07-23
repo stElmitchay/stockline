@@ -11,6 +11,9 @@
 	"dependencies": {
 		"@privy-io/react-auth": "^2.16.0",
 		"@privy-io/server-auth": "^1.27.4",
+		"@pythnetwork/client": "^2.22.1",
+		"@pythnetwork/hermes-client": "^2.0.0",
+		"@pythnetwork/price-service-client": "^1.9.0",
 		"@solana/spl-token": "^0.4.13",
 		"@solana/web3.js": "^1.98.2",
 		"lucide-react": "^0.513.0",
