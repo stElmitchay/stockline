@@ -10,6 +10,12 @@ export interface UseStocksReturn {
   isLoading: boolean;
   searchQuery: string;
   sortBy: SortOption;
+  stats: {
+    totalStocks: number;
+    gainers: number;
+    losers: number;
+    totalVolume: number;
+  };
   setSearchQuery: (query: string) => void;
   setSortBy: (sort: SortOption) => void;
   refreshData: () => void;
@@ -22,6 +28,12 @@ export const useStocks = (): UseStocksReturn => {
   const [sortBy, setSortBy] = useState<SortOption>(DEFAULTS.SORT_BY);
   const [lastRefreshed, setLastRefreshed] = useState<number>(Date.now());
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalStocks: 0,
+    gainers: 0,
+    losers: 0,
+    totalVolume: 0
+  });
 
   // Load stock data from JSON file
   const xStocksData: Stock[] = stocksData.xStocks.map(stock => ({
@@ -138,6 +150,23 @@ export const useStocks = (): UseStocksReturn => {
     return () => clearInterval(refreshInterval);
   }, [lastRefreshed, stocks.length]);
 
+  // Calculate stats when stocks are updated
+  useEffect(() => {
+    if (stocks.length > 0) {
+      const totalStocks = stocks.length;
+      const gainers = stocks.filter(s => (s.change24h ?? 0) > 0).length;
+      const losers = stocks.filter(s => (s.change24h ?? 0) < 0).length;
+      const totalVolume = stocks.reduce((acc, s) => acc + (s.volume24h ?? 0), 0);
+
+      setStats({
+        totalStocks,
+        gainers,
+        losers,
+        totalVolume
+      });
+    }
+  }, [stocks]);
+
   // Filter and sort stocks
   const filteredStocks = useMemo(() => {
     let filtered = stocks.filter(stock => 
@@ -173,6 +202,7 @@ export const useStocks = (): UseStocksReturn => {
     isLoading,
     searchQuery,
     sortBy,
+    stats,
     setSearchQuery: (query: string) => setSearchQuery(query),
     setSortBy: (sort: SortOption) => setSortBy(sort),
     refreshData

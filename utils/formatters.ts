@@ -5,7 +5,10 @@
 /**
  * Format price as currency
  */
-export const formatPrice = (price: number): string => {
+export const formatPrice = (price?: number): string => {
+  if (price === undefined || price === null) {
+    return '$0.00';
+  }
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -16,7 +19,10 @@ export const formatPrice = (price: number): string => {
 /**
  * Format market cap with appropriate suffix (T, B, M)
  */
-export const formatMarketCap = (marketCap: number): string => {
+export const formatMarketCap = (marketCap?: number): string => {
+  if (marketCap === undefined || marketCap === null) {
+    return '$0';
+  }
   if (marketCap >= 1e12) {
     return `$${(marketCap / 1e12).toFixed(2)}T`;
   } else if (marketCap >= 1e9) {
@@ -30,7 +36,10 @@ export const formatMarketCap = (marketCap: number): string => {
 /**
  * Format volume with appropriate suffix (B, M, K)
  */
-export const formatVolume = (volume: number): string => {
+export const formatVolume = (volume?: number): string => {
+  if (volume === undefined || volume === null) {
+    return '$0';
+  }
   if (volume >= 1e9) {
     return `$${(volume / 1e9).toFixed(2)}B`;
   } else if (volume >= 1e6) {
@@ -53,7 +62,10 @@ export const formatAddress = (address: string): string => {
 /**
  * Format percentage change with appropriate sign
  */
-export const formatPercentageChange = (change: number): string => {
+export const formatPercentageChange = (change?: number): string => {
+  if (change === undefined || change === null) {
+    return '0.00%';
+  }
   const sign = change >= 0 ? '+' : '';
   return `${sign}${change.toFixed(2)}%`;
 };

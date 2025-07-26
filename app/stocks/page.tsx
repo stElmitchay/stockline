@@ -12,32 +12,19 @@ import { useStocks } from "@/hooks/useStocks";
 import Navigation from "@/components/navigation";
 
 export default function StocksMarketplace() {
+  const { stocks, filteredStocks, isLoading, searchQuery, sortBy, stats, setSearchQuery, setSortBy, refreshData } = useStocks();
   const [showFilters, setShowFilters] = useState(false);
-  
-  const {
-    stocks,
-    filteredStocks,
-    isLoading,
-    searchQuery,
-    setSearchQuery,
-    sortBy,
-    setSortBy,
-    refreshData
-  } = useStocks();
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
       <Navigation />
       
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-8 mt-16">
-        {/* Hero Section with Search */}
-        <div className="relative mb-8">
-          {/* Background Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-xl"></div>
-          
-          <div className="relative bg-gray-900/30 backdrop-blur-sm border border-gray-800/50 rounded-2xl p-8">
-            <div className="text-center mb-6">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header Section */}
+        <div className="text-center mb-12">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-8">
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-3">
                 Stock Marketplace
               </h1>
@@ -88,24 +75,20 @@ export default function StocksMarketplace() {
         {/* Stats Bar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
-            <div className="text-2xl font-bold text-white">{stocks.length}</div>
+            <div className="text-2xl font-bold text-white">{stats.totalStocks}</div>
             <div className="text-gray-400 text-sm">Total Stocks</div>
           </div>
           <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
-            <div className="text-2xl font-bold text-green-400">
-              {stocks.filter(s => (s.change24h ?? 0) > 0).length}
-            </div>
+            <div className="text-2xl font-bold text-green-400">{stats.gainers}</div>
             <div className="text-gray-400 text-sm">Gainers</div>
           </div>
           <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
-            <div className="text-2xl font-bold text-red-400">
-              {stocks.filter(s => (s.change24h ?? 0) < 0).length}
-            </div>
+            <div className="text-2xl font-bold text-red-400">{stats.losers}</div>
             <div className="text-gray-400 text-sm">Losers</div>
           </div>
           <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
             <div className="text-2xl font-bold text-blue-400">
-              ${(stocks.reduce((acc, s) => acc + s.volume24h, 0) / 1000000).toFixed(1)}M
+              ${(stats.totalVolume / 1000000).toFixed(1)}M
             </div>
             <div className="text-gray-400 text-sm">24h Volume</div>
           </div>
