@@ -26,7 +26,7 @@ export const useStocks = (): UseStocksReturn => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(DEFAULTS.SEARCH_QUERY);
   const [sortBy, setSortBy] = useState<SortOption>(DEFAULTS.SORT_BY);
-  const [lastRefreshed, setLastRefreshed] = useState<number>(Date.now());
+  const [hasInitialized, setHasInitialized] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalStocks: 0,
@@ -50,105 +50,115 @@ export const useStocks = (): UseStocksReturn => {
     setStocks(xStocksData);
   }, []);
 
-  // Function to refresh data
-  const refreshData = () => {
-    setIsLoading(true);
-    setFetchError(null);
-    setLastRefreshed(Date.now());
+  // Function to fetch live data
+  const fetchLiveData = async () => {
+    try {
+      console.log('Fetching live data for stocks...');
+      setIsLoading(true);
+      setFetchError(null);
+      
+      // Get all token addresses
+      const tokenAddresses = xStocksData.map(stock => stock.solanaAddress);
+      
+      if (tokenAddresses.length === 0) {
+        throw new Error('No token addresses found');
+      }
+      
+      // Log addresses for debugging
+      console.log(`Found ${tokenAddresses.length} token addresses to fetch`);
+      console.log('Token addresses:', tokenAddresses);
+      
+      // Fetch live data for all tokens
+      const tokenDataMap = await fetchMultipleTokensData(tokenAddresses);
+      
+      if (!tokenDataMap || tokenDataMap.size === 0) {
+        throw new Error('No data returned from token fetch');
+      }
+      
+      console.log(`Received data for ${tokenDataMap.size} tokens`);
+      console.log('Successfully fetched tokens:', Array.from(tokenDataMap.keys()));
+      
+      // Update stocks with live data
+      const updatedStocks = xStocksData.map(stock => {
+        const liveData = tokenDataMap.get(stock.solanaAddress);
+        
+        if (liveData) {
+          // Validate the data before using it
+          const validPrice = typeof liveData.price === 'number' && !isNaN(liveData.price) && liveData.price > 0
+            ? liveData.price
+            : stock.price; // Fall back to static data if invalid
+            
+          const validMarketCap = typeof liveData.marketCap === 'number' && !isNaN(liveData.marketCap) && liveData.marketCap > 0
+            ? liveData.marketCap
+            : stock.marketCap;
+            
+          const validVolume = typeof liveData.volume24h === 'number' && !isNaN(liveData.volume24h) && liveData.volume24h > 0
+            ? liveData.volume24h
+            : stock.volume24h;
+            
+          // change24h can be negative, so just check if it's a number
+          const validChange = typeof liveData.change24h === 'number' && !isNaN(liveData.change24h)
+            ? liveData.change24h
+            : stock.change24h ?? 0;
+          
+          // Log the price for debugging
+          console.log(`✅ ${stock.symbol} (${stock.solanaAddress}): $${validPrice.toFixed(4)}`);
+            
+          return {
+            ...stock,
+            price: validPrice,
+            marketCap: validMarketCap,
+            volume24h: validVolume,
+            change24h: validChange
+          };
+        }
+        
+        console.warn(`❌ No live data found for ${stock.symbol} (${stock.solanaAddress}), using static data`);
+        return stock;
+      });
+      
+      // Check if we have any valid prices
+      const hasValidPrices = updatedStocks.some(stock => stock.price > 0);
+      if (!hasValidPrices) {
+        throw new Error('No valid prices found in the data');
+      }
+      
+      // Calculate success rate
+      const successfulFetches = updatedStocks.filter(stock => stock.price > 0).length;
+      const totalTokens = updatedStocks.length;
+      const successRate = ((successfulFetches / totalTokens) * 100).toFixed(1);
+      
+      console.log(`🎯 Fetch Summary: ${successfulFetches}/${totalTokens} tokens fetched successfully (${successRate}% success rate)`);
+      
+      setStocks(updatedStocks);
+      setFetchError(null);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error fetching live stock data:', errorMessage);
+      setFetchError(`Failed to fetch live data: ${errorMessage}`);
+      // Ensure we have data to display even if fetch fails
+      if (stocks.length === 0) {
+        setStocks(xStocksData);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  useEffect(() => {
-    const fetchLiveData = async () => {
-      try {
-        console.log('Fetching live data for stocks...');
-        // Get all token addresses
-        const tokenAddresses = xStocksData.map(stock => stock.solanaAddress);
-        
-        if (tokenAddresses.length === 0) {
-          throw new Error('No token addresses found');
-        }
-        
-        // Log addresses for debugging
-        console.log(`Found ${tokenAddresses.length} token addresses to fetch`);
-        
-        // Fetch live data for all tokens
-        const tokenDataMap = await fetchMultipleTokensData(tokenAddresses);
-        
-        if (!tokenDataMap || tokenDataMap.size === 0) {
-          throw new Error('No data returned from token fetch');
-        }
-        
-        console.log(`Received data for ${tokenDataMap.size} tokens`);
-        
-        // Update stocks with live data
-        const updatedStocks = xStocksData.map(stock => {
-          const liveData = tokenDataMap.get(stock.solanaAddress);
-          
-          if (liveData) {
-            // Validate the data before using it
-            const validPrice = typeof liveData.price === 'number' && !isNaN(liveData.price) && liveData.price > 0
-              ? liveData.price
-              : stock.price; // Fall back to static data if invalid
-              
-            const validMarketCap = typeof liveData.marketCap === 'number' && !isNaN(liveData.marketCap) && liveData.marketCap > 0
-              ? liveData.marketCap
-              : stock.marketCap;
-              
-            const validVolume = typeof liveData.volume24h === 'number' && !isNaN(liveData.volume24h) && liveData.volume24h > 0
-              ? liveData.volume24h
-              : stock.volume24h;
-              
-            // change24h can be negative, so just check if it's a number
-            const validChange = typeof liveData.change24h === 'number' && !isNaN(liveData.change24h)
-              ? liveData.change24h
-              : stock.change24h ?? 0;
-            
-            // Log the price for debugging
-            console.log(`${stock.symbol} price: ${validPrice}`);
-              
-            return {
-              ...stock,
-              price: validPrice,
-              marketCap: validMarketCap,
-              volume24h: validVolume,
-              change24h: validChange
-            };
-          }
-          
-          console.warn(`No live data found for ${stock.symbol}, using static data`);
-          return stock;
-        });
-        
-        // Check if we have any valid prices
-        const hasValidPrices = updatedStocks.some(stock => stock.price > 0);
-        if (!hasValidPrices) {
-          throw new Error('No valid prices found in the data');
-        }
-        
-        setStocks(updatedStocks);
-        setFetchError(null);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('Error fetching live stock data:', errorMessage);
-        setFetchError(`Failed to fetch live data: ${errorMessage}`);
-        // Ensure we have data to display even if fetch fails
-        if (stocks.length === 0) {
-          setStocks(xStocksData);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
+  // Function to refresh data manually
+  const refreshData = () => {
+    console.log('Manual refresh triggered');
     fetchLiveData();
-    
-    // Set up auto-refresh every minute
-    const refreshInterval = setInterval(() => {
-      refreshData();
-    }, 60000); // 60 seconds
-    
-    return () => clearInterval(refreshInterval);
-  }, [lastRefreshed, stocks.length]);
+  };
+
+  // Only fetch on initial page load
+  useEffect(() => {
+    if (!hasInitialized) {
+      console.log('Initial page load - fetching stock data');
+      setHasInitialized(true);
+      fetchLiveData();
+    }
+  }, [hasInitialized]);
 
   // Calculate stats when stocks are updated
   useEffect(() => {
