@@ -24,7 +24,13 @@ export const useStocks = (): UseStocksReturn => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Load stock data from JSON file
-  const xStocksData: Stock[] = stocksData.xStocks;
+  const xStocksData: Stock[] = stocksData.xStocks.map(stock => ({
+    ...stock,
+    price: 0,
+    marketCap: 0,
+    volume24h: 0,
+    change24h: 0
+  }));
 
   // Initialize with static data to ensure we always have something to display
   useEffect(() => {
@@ -143,16 +149,16 @@ export const useStocks = (): UseStocksReturn => {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'marketCap':
-          return b.marketCap - a.marketCap;
+          return (b.marketCap ?? 0) - (a.marketCap ?? 0);
         case 'price':
-          return b.price - a.price;
+          return (b.price ?? 0) - (a.price ?? 0);
         case 'change24h':
           // Handle undefined change24h values
           const aChange = a.change24h ?? 0;
           const bChange = b.change24h ?? 0;
           return bChange - aChange;
         case 'volume':
-          return b.volume24h - a.volume24h;
+          return (b.volume24h ?? 0) - (a.volume24h ?? 0);
         default:
           return 0;
       }

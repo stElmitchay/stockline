@@ -9,6 +9,7 @@ import { StockCard } from "@/components/stockCard";
 import { StockFilters } from "@/components/stockFilters";
 import { LoadingSkeleton } from "@/components/loadingSkeleton";
 import { useStocks } from "@/hooks/useStocks";
+import Navigation from "@/components/navigation";
 
 export default function StocksMarketplace() {
   const [showFilters, setShowFilters] = useState(false);
@@ -26,54 +27,64 @@ export default function StocksMarketplace() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header */}
-      <div className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+      <Navigation />
+      
+      {/* Main Content */}
+      <div className="container mx-auto px-6 py-8 mt-16">
+        {/* Hero Section with Search */}
+        <div className="relative mb-8">
+          {/* Background Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-xl"></div>
+          
+          <div className="relative bg-gray-900/30 backdrop-blur-sm border border-gray-800/50 rounded-2xl p-8">
+            <div className="text-center mb-6">
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-3">
                 Stock Marketplace
               </h1>
-              <p className="text-gray-400 mt-1">
-                Trade tokenized stocks on Solana blockchain
+              <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+                Trade tokenized stocks on Solana blockchain with real-time pricing
               </p>
             </div>
             
-            {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 lg:w-auto w-full">
-              <div className="relative flex-1 lg:w-80">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search stocks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-gray-800/50 border-gray-700"
-                />
+            {/* Floating Search Bar */}
+            <div className="max-w-2xl mx-auto">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Input
+                    placeholder="Search stocks by name or symbol..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-12 pr-4 py-4 text-lg bg-gray-800/80 border-gray-700/50 rounded-xl backdrop-blur-sm focus:bg-gray-800 transition-all duration-200"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`flex items-center gap-2 px-6 py-4 rounded-xl transition-all duration-200 ${
+                    showFilters 
+                      ? 'bg-blue-600 border-blue-500 text-white' 
+                      : 'bg-gray-800/80 border-gray-700/50 hover:bg-gray-700'
+                  }`}
+                >
+                  <Filter className="h-5 w-5" />
+                  Filters
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Filters
-              </Button>
+              
+              {/* Filters Panel */}
+              {showFilters && (
+                <div className="mt-4 p-4 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50">
+                  <StockFilters
+                    sortBy={sortBy}
+                    onSortChange={setSortBy}
+                    onRefresh={refreshData}
+                  />
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Filters Panel */}
-          {showFilters && (
-            <StockFilters
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              onRefresh={refreshData}
-            />
-          )}
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
         {/* Stats Bar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">

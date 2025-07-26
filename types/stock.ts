@@ -2,10 +2,10 @@ export interface Stock {
   symbol: string;
   name: string;
   solanaAddress: string;
-  price: number;
+  price?: number;
   change24h?: number;
-  marketCap: number;
-  volume24h: number;
+  marketCap?: number;
+  volume24h?: number;
   logo?: string;
   solscanUrl?: string;
 }

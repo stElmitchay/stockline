@@ -20,7 +20,7 @@ export const SORT_OPTIONS = [
 export const DEFAULTS = {
   SECTOR: 'all',
   SORT_BY: 'marketCap',
-  SEARCH_QUERY: ''
+  SEARCH_QUERY: '' as string
 } as const;
 
 // UI Configuration

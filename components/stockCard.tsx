@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { TrendingUp, TrendingDown, Copy, ExternalLink, Eye } from "lucide-react";
+import { TrendingUp, TrendingDown, Copy, ExternalLink, Eye, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Stock } from "@/types/stock";
 import { formatPrice, formatMarketCap, formatVolume, formatAddress } from "@/utils/formatters";
 import { API_CONFIG, EXTERNAL_URLS } from "@/constants";
+import Link from "next/link";
 
 interface StockCardProps {
   stock: Stock;
@@ -98,21 +99,33 @@ export function StockCard({ stock }: StockCardProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-2">
-        <Button 
-          size="sm" 
-          className="flex-1"
-          onClick={() => {
-            const solscanUrl = stock.solscanUrl || `${EXTERNAL_URLS.SOLSCAN_BASE}${stock.solanaAddress}`;
-            window.open(solscanUrl, '_blank');
-          }}
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          View Details
-        </Button>
-        <Button size="sm" variant="outline">
-          <ExternalLink className="h-4 w-4" />
-        </Button>
+      <div className="space-y-2">
+        <Link href={`/purchase?symbol=${stock.symbol}&name=${encodeURIComponent(stock.name)}&price=${stock.price}`} className="block">
+          <Button 
+            size="sm" 
+            className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-semibold"
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Buy Now
+          </Button>
+        </Link>
+        <div className="flex gap-2">
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              const solscanUrl = stock.solscanUrl || `${EXTERNAL_URLS.SOLSCAN_BASE}${stock.solanaAddress}`;
+              window.open(solscanUrl, '_blank');
+            }}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Details
+          </Button>
+          <Button size="sm" variant="outline">
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );

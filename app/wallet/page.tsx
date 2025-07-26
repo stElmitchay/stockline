@@ -7,6 +7,8 @@ import { TOKEN_PROGRAM_ID, getMint } from "@solana/spl-token";
 import { ArrowLeft, ArrowDown, ArrowUp, CreditCard, Coins, Send, Copy, Check, Clock, TrendingUp, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "../../components/ui/badge";
+import { fetchTokenData, fetchMultipleTokensData } from "@/utils/solanaData";
+import Navigation from "@/components/navigation";
 
 interface WalletAccount {
 	address: string;
@@ -164,26 +166,24 @@ export default function WalletPage() {
 
 	const fetchTokenPrices = async (tokenMints: string[]) => {
 		try {
-			// Fetch SOL price
-			const solResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
-			const solData = await solResponse.json();
-			const currentSolPrice = solData.solana?.usd || 0;
+			// Fetch SOL price using centralized function
+			const solData = await fetchTokenData('So11111111111111111111111111111111111111112');
+			const currentSolPrice = solData?.price || 0;
 			setSolPrice(currentSolPrice);
 
-			// Fetch token prices from Jupiter API
+			// Fetch token prices using centralized function
 			const tokenPrices: { [key: string]: number } = {};
 			
 			if (tokenMints.length > 0) {
 				try {
-					// Jupiter price API endpoint
-					const priceResponse = await fetch(`https://price.jup.ag/v4/price?ids=${tokenMints.join(',')}`);
-					const priceData = await priceResponse.json();
+					const tokensData = await fetchMultipleTokensData(tokenMints);
 					
 					for (const mint of tokenMints) {
-						tokenPrices[mint] = priceData.data?.[mint]?.price || 0;
+						const tokenData = tokensData.get(mint);
+						tokenPrices[mint] = tokenData?.price || 0;
 					}
 				} catch (priceError) {
-					console.error('Error fetching token prices from Jupiter:', priceError);
+					console.error('Error fetching token prices:', priceError);
 					// Fallback to 0 for all tokens
 					for (const mint of tokenMints) {
 						tokenPrices[mint] = 0;
@@ -293,16 +293,19 @@ export default function WalletPage() {
 
 	if (!authenticated || !user) {
 		return (
-			<div className="min-h-screen bg-black text-white flex items-center justify-center">
-				<div className="text-center">
-					<h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-					<p className="text-gray-400 mb-6">Please log in to view your wallet</p>
-					<Link
-						href="/"
-						className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-					>
-						Go to Login
-					</Link>
+			<div className="min-h-screen bg-black text-white">
+				<Navigation />
+				<div className="flex items-center justify-center min-h-[calc(100vh-4rem)] mt-16">
+					<div className="text-center">
+						<h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+						<p className="text-gray-400 mb-6">Please log in to view your wallet</p>
+						<Link
+							href="/"
+							className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+						>
+							Go Home
+						</Link>
+					</div>
 				</div>
 			</div>
 		);
@@ -310,18 +313,21 @@ export default function WalletPage() {
 
 	if (!solanaWallet) {
 		return (
-			<div className="min-h-screen bg-black text-white flex items-center justify-center">
-				<div className="text-center">
-					<h1 className="text-2xl font-bold mb-4">No Solana Wallet Found</h1>
-					<p className="text-gray-400 mb-6">
-						Please create a Solana wallet to view wallet information
-					</p>
-					<Link
-						href="/dashboard"
-						className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-					>
-						Go to Dashboard
-					</Link>
+			<div className="min-h-screen bg-black text-white">
+				<Navigation />
+				<div className="flex items-center justify-center min-h-[calc(100vh-4rem)] mt-16">
+					<div className="text-center">
+						<h1 className="text-2xl font-bold mb-4">No Solana Wallet Found</h1>
+						<p className="text-gray-400 mb-6">
+							Please create a Solana wallet to view wallet information
+						</p>
+						<Link
+							href="/"
+							className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+						>
+							Go Home
+						</Link>
+					</div>
 				</div>
 			</div>
 		);
@@ -382,15 +388,10 @@ export default function WalletPage() {
 
 	return (
 		<div className="min-h-screen bg-black text-white">
-			<div className="container mx-auto px-4 py-6">
+			<Navigation />
+			<div className="container mx-auto px-4 py-6 mt-16">
 				{/* Header */}
 				<div className="flex items-center gap-4 mb-6">
-					<Link
-						href="/dashboard"
-						className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-					>
-						<ArrowLeft className="h-6 w-6" />
-					</Link>
 					<h1 className="text-2xl font-bold">Portfolio</h1>
 				</div>
 
