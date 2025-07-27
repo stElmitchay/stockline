@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Stock, SortOption } from '@/types/stock';
 import stocksData from '@/data/stocks.json';
 import { API_CONFIG, DEFAULTS } from '@/constants';
-import { fetchMultipleTokensData } from '@/utils/solanaData';
+import { fetchMultipleTokensDataProgressive } from '@/utils/solanaData';
 
 export interface UseStocksReturn {
   stocks: Stock[];
@@ -50,10 +50,10 @@ export const useStocks = (): UseStocksReturn => {
     setStocks(xStocksData);
   }, []);
 
-  // Function to fetch live data
+  // Function to fetch live data with progressive loading
   const fetchLiveData = async () => {
     try {
-      console.log('Fetching live data for stocks...');
+      console.log('Fetching live data for stocks with progressive loading...');
       setIsLoading(true);
       setFetchError(null);
       
@@ -68,69 +68,11 @@ export const useStocks = (): UseStocksReturn => {
       console.log(`Found ${tokenAddresses.length} token addresses to fetch`);
       console.log('Token addresses:', tokenAddresses);
       
-      // Fetch live data for all tokens
-      const tokenDataMap = await fetchMultipleTokensData(tokenAddresses);
-      
-      if (!tokenDataMap || tokenDataMap.size === 0) {
-        throw new Error('No data returned from token fetch');
-      }
-      
-      console.log(`Received data for ${tokenDataMap.size} tokens`);
-      console.log('Successfully fetched tokens:', Array.from(tokenDataMap.keys()));
-      
-      // Update stocks with live data
-      const updatedStocks = xStocksData.map(stock => {
-        const liveData = tokenDataMap.get(stock.solanaAddress);
-        
-        if (liveData) {
-          // Validate the data before using it
-          const validPrice = typeof liveData.price === 'number' && !isNaN(liveData.price) && liveData.price > 0
-            ? liveData.price
-            : stock.price; // Fall back to static data if invalid
-            
-          const validMarketCap = typeof liveData.marketCap === 'number' && !isNaN(liveData.marketCap) && liveData.marketCap > 0
-            ? liveData.marketCap
-            : stock.marketCap;
-            
-          const validVolume = typeof liveData.volume24h === 'number' && !isNaN(liveData.volume24h) && liveData.volume24h > 0
-            ? liveData.volume24h
-            : stock.volume24h;
-            
-          // change24h can be negative, so just check if it's a number
-          const validChange = typeof liveData.change24h === 'number' && !isNaN(liveData.change24h)
-            ? liveData.change24h
-            : stock.change24h ?? 0;
-          
-          // Log the price for debugging
-          console.log(`✅ ${stock.symbol} (${stock.solanaAddress}): $${validPrice.toFixed(4)}`);
-            
-          return {
-            ...stock,
-            price: validPrice,
-            marketCap: validMarketCap,
-            volume24h: validVolume,
-            change24h: validChange
-          };
-        }
-        
-        console.warn(`❌ No live data found for ${stock.symbol} (${stock.solanaAddress}), using static data`);
-        return stock;
+      // Use progressive loading function that updates stocks as data becomes available
+      await fetchMultipleTokensDataProgressive(tokenAddresses, (updatedStocks) => {
+        setStocks(updatedStocks);
       });
       
-      // Check if we have any valid prices
-      const hasValidPrices = updatedStocks.some(stock => stock.price > 0);
-      if (!hasValidPrices) {
-        throw new Error('No valid prices found in the data');
-      }
-      
-      // Calculate success rate
-      const successfulFetches = updatedStocks.filter(stock => stock.price > 0).length;
-      const totalTokens = updatedStocks.length;
-      const successRate = ((successfulFetches / totalTokens) * 100).toFixed(1);
-      
-      console.log(`🎯 Fetch Summary: ${successfulFetches}/${totalTokens} tokens fetched successfully (${successRate}% success rate)`);
-      
-      setStocks(updatedStocks);
       setFetchError(null);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -154,7 +96,7 @@ export const useStocks = (): UseStocksReturn => {
   // Only fetch on initial page load
   useEffect(() => {
     if (!hasInitialized) {
-      console.log('Initial page load - fetching stock data');
+      console.log('Initial page load - fetching stock data with progressive loading');
       setHasInitialized(true);
       fetchLiveData();
     }

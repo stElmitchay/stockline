@@ -15,6 +15,12 @@ export default function StocksMarketplace() {
   const { stocks, filteredStocks, isLoading, searchQuery, sortBy, stats, setSearchQuery, setSortBy, refreshData } = useStocks();
   const [showFilters, setShowFilters] = useState(false);
 
+  // Show loading skeletons only if we have no stocks yet
+  const showLoadingSkeletons = isLoading && stocks.length === 0;
+  
+  // Show stocks that have been loaded, even if still loading more
+  const stocksToShow = showLoadingSkeletons ? [] : filteredStocks;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
       <Navigation />
@@ -72,6 +78,7 @@ export default function StocksMarketplace() {
             </div>
           </div>
         </div>
+        
         {/* Stats Bar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
@@ -95,7 +102,7 @@ export default function StocksMarketplace() {
         </div>
 
         {/* Stock Grid */}
-        {isLoading ? (
+        {showLoadingSkeletons ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
               <LoadingSkeleton key={i} />
@@ -103,13 +110,13 @@ export default function StocksMarketplace() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredStocks.map((stock) => (
+            {stocksToShow.map((stock) => (
               <StockCard key={stock.symbol} stock={stock} />
             ))}
           </div>
         )}
 
-        {filteredStocks.length === 0 && !isLoading && (
+        {stocksToShow.length === 0 && !showLoadingSkeletons && (
           <div className="text-center py-12">
             <div className="text-gray-400 text-lg">No stocks found</div>
             <div className="text-gray-500 text-sm mt-2">

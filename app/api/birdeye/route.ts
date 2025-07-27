@@ -9,10 +9,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const address = searchParams.get('address');
     const addresses = searchParams.get('addresses'); // For batch requests
+    const batchIndex = searchParams.get('batchIndex'); // For progressive loading
 
     // Handle batch requests
     if (addresses) {
-      return await handleBatchRequest(addresses);
+      return await handleBatchRequest(addresses, batchIndex);
     }
 
     // Handle single address requests
@@ -116,9 +117,11 @@ async function handleSingleRequest(address: string) {
   return NextResponse.json(data);
 }
 
-async function handleBatchRequest(addressesParam: string) {
+async function handleBatchRequest(addressesParam: string, batchIndex?: string | null) {
   const addressList = addressesParam.split(',').filter(addr => addr.trim());
-  console.log(`Birdeye API proxy: Processing ${addressList.length} addresses individually with delays`);
+  const batchNum = batchIndex ? parseInt(batchIndex) : 0;
+  
+  console.log(`Birdeye API proxy: Processing batch ${batchNum + 1} with ${addressList.length} addresses individually with delays`);
   
   const results: any = {};
   
@@ -219,6 +222,6 @@ async function handleBatchRequest(addressesParam: string) {
     }
   }
   
-  console.log(`🎯 Completed processing ${addressList.length} addresses`);
+  console.log(`🎯 Completed processing batch ${batchNum + 1} with ${addressList.length} addresses`);
   return NextResponse.json(results);
 }
