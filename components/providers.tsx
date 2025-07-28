@@ -12,12 +12,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
 					showWalletLoginFirst: true,
 					walletChainType: "solana-only",
 				},
-				loginMethods: ["wallet", "email"],
-				externalWallets: {
-					solana: {
-						connectors: toSolanaWalletConnectors(),
-					},
-				},
 				embeddedWallets: {
 					createOnLogin: "all-users",
 				},

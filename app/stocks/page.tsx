@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, TrendingUp, TrendingDown, BarChart3, DollarSign, Filter } from "lucide-react";
+import { Search, TrendingUp, TrendingDown, BarChart3, DollarSign, Filter, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import Navigation from "@/components/navigation";
 export default function StocksMarketplace() {
   const { stocks, filteredStocks, isLoading, searchQuery, sortBy, stats, setSearchQuery, setSortBy, refreshData } = useStocks();
   const [showFilters, setShowFilters] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   // Show loading skeletons only if we have no stocks yet
   const showLoadingSkeletons = isLoading && stocks.length === 0;
@@ -26,90 +27,103 @@ export default function StocksMarketplace() {
       <Navigation />
       
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Header Section */}
-        <div className="text-center mb-12">
+      <div className="container mx-auto px-4 py-6">
+        {/* Hero Section - Mobile First */}
+        <div className="mb-8 pt-16">
           <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
-              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-3">
-                Stock Marketplace
-              </h1>
-              <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-                Trade tokenized stocks on Solana blockchain with real-time pricing
-              </p>
-            </div>
-            
-            {/* Floating Search Bar */}
-            <div className="max-w-2xl mx-auto">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input
-                    placeholder="Search stocks by name or symbol..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-12 pr-4 py-4 text-lg bg-gray-800/80 border-gray-700/50 rounded-xl backdrop-blur-sm focus:bg-gray-800 transition-all duration-200"
-                  />
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`flex items-center gap-2 px-6 py-4 rounded-xl transition-all duration-200 ${
-                    showFilters 
-                      ? 'bg-blue-600 border-blue-500 text-white' 
-                      : 'bg-gray-800/80 border-gray-700/50 hover:bg-gray-700'
-                  }`}
-                >
-                  <Filter className="h-5 w-5" />
-                  Filters
-                </Button>
+            {/* Hero Layout - Text + Action Icons */}
+            <div className="flex items-start justify-between gap-4">
+              {/* Main Text Content */}
+              <div className="flex-1">
               </div>
               
-              {/* Filters Panel */}
-              {showFilters && (
-                <div className="mt-4 p-4 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50">
+              {/* Action Icons - Mobile Optimized */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Search Icon */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSearch(!showSearch)}
+                  className="p-2 h-10 w-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700/50"
+                >
+                  <Search className="h-5 w-5 text-gray-300" />
+                </Button>
+                
+                {/* Filter Icon */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`p-2 h-10 w-10 rounded-full border transition-all duration-200 ${
+                    showFilters 
+                      ? 'bg-blue-600/20 border-blue-500/50' 
+                      : 'bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/50'
+                  }`}
+                >
+                  <Filter className="h-5 w-5 text-gray-300" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Floating Search Bar - Only show when active */}
+            {showSearch && (
+              <div className="mt-4 relative animate-in slide-in-from-top-2 duration-200">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search stocks..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-10 py-2.5 text-sm bg-gray-800/80 border-gray-700/50 rounded-lg backdrop-blur-sm focus:bg-gray-800 transition-all duration-200"
+                    autoFocus
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSearch(false)}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 h-6 w-6"
+                  >
+                    <X className="h-3 w-3 text-gray-400" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Filters Panel - Floating */}
+            {showFilters && (
+              <div className="mt-4 animate-in slide-in-from-top-2 duration-200">
+                <div className="bg-gray-800/90 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-gray-200">Filters</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowFilters(false)}
+                      className="p-1 h-6 w-6"
+                    >
+                      <X className="h-3 w-3 text-gray-400" />
+                    </Button>
+                  </div>
                   <StockFilters
                     sortBy={sortBy}
                     onSortChange={setSortBy}
                     onRefresh={refreshData}
                   />
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Stats Bar */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
-            <div className="text-2xl font-bold text-white">{stats.totalStocks}</div>
-            <div className="text-gray-400 text-sm">Total Stocks</div>
-          </div>
-          <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
-            <div className="text-2xl font-bold text-green-400">{stats.gainers}</div>
-            <div className="text-gray-400 text-sm">Gainers</div>
-          </div>
-          <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
-            <div className="text-2xl font-bold text-red-400">{stats.losers}</div>
-            <div className="text-gray-400 text-sm">Losers</div>
-          </div>
-          <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
-            <div className="text-2xl font-bold text-blue-400">
-              ${(stats.totalVolume / 1000000).toFixed(1)}M
-            </div>
-            <div className="text-gray-400 text-sm">24h Volume</div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Stock Grid */}
         {showLoadingSkeletons ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
               <LoadingSkeleton key={i} />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {stocksToShow.map((stock) => (
               <StockCard key={stock.symbol} stock={stock} />
             ))}

@@ -104,25 +104,7 @@ export function StockCard({ stock }: StockCardProps) {
         </div>
       </div>
 
-      {/* Solana Address */}
-      <div className="mb-4">
-        <div className="text-gray-400 text-xs mb-2">Solana Address</div>
-        <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg p-2">
-          <code className="text-blue-400 text-xs font-mono flex-1 truncate">
-            {formatAddress(stock.solanaAddress)}
-          </code>
-          <button
-            onClick={() => copyToClipboard(stock.solanaAddress)}
-            className="text-gray-400 hover:text-white transition-colors p-1"
-            title="Copy address"
-          >
-            <Copy className="h-3 w-3" />
-          </button>
-        </div>
-        {copied && (
-          <div className="text-green-400 text-xs mt-1">Address copied!</div>
-        )}
-      </div>
+
 
       {/* Action Buttons */}
       <div className="space-y-2">

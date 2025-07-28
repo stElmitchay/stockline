@@ -20,41 +20,44 @@ export function StockFilters({
   const sortOptions = SORT_OPTIONS;
 
   return (
-    <div className="mt-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
-      <div className="flex flex-col lg:flex-row gap-4 justify-between items-start">
-        {/* Sort Options */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Sort By
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {sortOptions.map((option) => (
-              <Button
-                key={option.value}
-                size="sm"
-                variant={sortBy === option.value ? "primary" : "outline"}
-                onClick={() => onSortChange(option.value as SortOption)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-        
-        {/* Refresh Button */}
-        {onRefresh && (
-          <div>
+    <div className="space-y-4">
+      {/* Sort Options */}
+      <div>
+        <label className="block text-xs font-medium text-gray-300 mb-2">
+          Sort By
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {sortOptions.map((option) => (
             <Button
+              key={option.value}
               size="sm"
-              variant="outline"
-              onClick={onRefresh}
-              className="text-blue-400 hover:text-blue-300 border-blue-500 hover:border-blue-400"
+              variant={sortBy === option.value ? "default" : "outline"}
+              onClick={() => onSortChange(option.value as SortOption)}
+              className={`text-xs px-2 py-1 h-7 ${
+                sortBy === option.value 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 border-gray-600'
+              }`}
             >
-              Refresh Data
+              {option.label}
             </Button>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
+      
+      {/* Refresh Button */}
+      {onRefresh && (
+        <div className="pt-2 border-t border-gray-700/50">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onRefresh}
+            className="text-xs px-3 py-1.5 h-8 text-blue-400 hover:text-blue-300 border-blue-500/50 hover:border-blue-400/50 bg-blue-600/10 hover:bg-blue-600/20"
+          >
+            Refresh Data
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

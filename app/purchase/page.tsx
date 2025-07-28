@@ -114,9 +114,11 @@ function PurchaseForm() {
       // Clear form data after successful submission
       resetForm();
       
-      // Hide success message after 3 seconds
+      // Hide success message after 3 seconds and redirect to stocks page
       setTimeout(() => {
         setIsSuccess(false);
+        // Redirect to stocks page after successful purchase
+        window.location.href = '/stocks';
       }, 3000);
       
     } catch (error) {
