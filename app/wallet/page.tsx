@@ -4,7 +4,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useState, useEffect } from "react";
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, getMint } from "@solana/spl-token";
-import { ArrowLeft, ArrowDown, ArrowUp, CreditCard, Coins, Send, Copy, Check, Clock, TrendingUp, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowDown, ArrowUp, Send, Copy, Check, Clock, TrendingUp, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "../../components/ui/badge";
 import { fetchTokenData, fetchMultipleTokensData } from "@/utils/solanaData";
@@ -47,7 +47,7 @@ export default function WalletPage() {
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [activeTab, setActiveTab] = useState<'holdings' | 'history'>('holdings');
+	const [activeTab, setActiveTab] = useState<'tokens' | 'history'>('tokens');
 	const [copied, setCopied] = useState(false);
 
 	// Get the first Solana wallet
@@ -66,23 +66,51 @@ export default function WalletPage() {
 
 	const fetchTokenMetadata = async (mint: string) => {
 		try {
-			// Try to fetch from Jupiter token list first
-			const response = await fetch(`https://token.jup.ag/strict`);
-			const tokenList = await response.json();
-			const token = tokenList.find((t: any) => t.address === mint);
+			// Known tokens mapping for reliable identification
+			const knownTokens: { [key: string]: { symbol: string; name: string } } = {
+				'So11111111111111111111111111111111111111112': { symbol: 'SOL', name: 'Solana' },
+				'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': { symbol: 'USDC', name: 'USD Coin' },
+				'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': { symbol: 'USDT', name: 'Tether' },
+				'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp': { symbol: 'TSLAx', name: 'Tesla Stock Token' },
+			};
 			
-			if (token) {
+			// Check if it's a known token first
+			if (knownTokens[mint]) {
 				return {
-					symbol: token.symbol,
-					name: token.name,
-					logoURI: token.logoURI
+					symbol: knownTokens[mint].symbol,
+					name: knownTokens[mint].name,
+					logoURI: undefined
 				};
 			}
 			
-			return { symbol: 'UNKNOWN', name: 'Unknown Token' };
+			// Try to get metadata from Birdeye API
+			try {
+				const birdeyeData = await fetchTokenData(mint);
+				if (birdeyeData && birdeyeData.price > 0) {
+					// If we can get price data, the token likely has metadata
+					return {
+						symbol: mint.slice(0, 6) + '...',
+						name: 'Token',
+						logoURI: undefined
+					};
+				}
+			} catch (birdeyeError) {
+				console.warn('Failed to fetch Birdeye data for metadata:', birdeyeError);
+			}
+			
+			// Final fallback
+			return { 
+				symbol: mint.slice(0, 6) + '...', 
+				name: 'Unknown Token',
+				logoURI: undefined
+			};
 		} catch (error) {
 			console.error('Error fetching token metadata:', error);
-			return { symbol: 'UNKNOWN', name: 'Unknown Token' };
+			return { 
+				symbol: mint.slice(0, 6) + '...', 
+				name: 'Unknown Token',
+				logoURI: undefined
+			};
 		}
 	};
 
@@ -208,17 +236,116 @@ export default function WalletPage() {
 			);
 			const publicKey = new PublicKey(solanaWallet!.address);
 
+			// Test RPC connection
+			console.log('Debug: Testing RPC connection...');
+			try {
+				const slot = await connection.getSlot();
+				console.log('Debug: RPC connection successful, current slot:', slot);
+			} catch (rpcError) {
+				console.error('Debug: RPC connection failed:', rpcError);
+				throw new Error(`RPC connection failed: ${rpcError}`);
+			}
+
 			// Fetch SOL balance
 			const solBalance = await connection.getBalance(publicKey);
 			setBalance(solBalance / LAMPORTS_PER_SOL);
 
 			// Fetch token accounts with on-chain balance verification
-			const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-				publicKey,
-				{ programId: TOKEN_PROGRAM_ID }
-			);
+			console.log('Debug: About to fetch token accounts...');
+			console.log('Debug: Public key:', publicKey.toString());
+			console.log('Debug: TOKEN_PROGRAM_ID:', TOKEN_PROGRAM_ID.toString());
+			
+			let tokenAccounts;
+			let rawTokenAccounts;
+			
+			// Try multiple methods to fetch token accounts
+			try {
+				// Method 1: getParsedTokenAccountsByOwner
+				console.log('Debug: Trying getParsedTokenAccountsByOwner...');
+				tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+					publicKey,
+					{ programId: TOKEN_PROGRAM_ID }
+				);
+				console.log(`Method 1 found ${tokenAccounts.value.length} token accounts`);
+			} catch (error1) {
+				console.error('Debug: Method 1 failed:', error1);
+				tokenAccounts = { value: [] };
+			}
+			
+			try {
+				// Method 2: getTokenAccountsByOwner (raw)
+				console.log('Debug: Trying getTokenAccountsByOwner...');
+				rawTokenAccounts = await connection.getTokenAccountsByOwner(
+					publicKey,
+					{ programId: TOKEN_PROGRAM_ID }
+				);
+				console.log(`Method 2 found ${rawTokenAccounts.value.length} raw token accounts`);
+			} catch (error2) {
+				console.error('Debug: Method 2 failed:', error2);
+				rawTokenAccounts = { value: [] };
+			}
+			
+			// If both methods return 0, try with different commitment
+			if (tokenAccounts.value.length === 0 && rawTokenAccounts.value.length === 0) {
+				console.log('Debug: Both methods returned 0, trying with confirmed commitment...');
+				try {
+					const confirmedConnection = new Connection(
+						process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string,
+						'confirmed'
+					);
+					
+					const confirmedTokenAccounts = await confirmedConnection.getParsedTokenAccountsByOwner(
+						publicKey,
+						{ programId: TOKEN_PROGRAM_ID }
+					);
+					console.log(`Confirmed commitment found ${confirmedTokenAccounts.value.length} token accounts`);
+					
+					if (confirmedTokenAccounts.value.length > 0) {
+						tokenAccounts = confirmedTokenAccounts;
+					}
+				} catch (error3) {
+					console.error('Debug: Confirmed commitment method failed:', error3);
+				}
+			}
+			
+			// If still no accounts, try with finality commitment
+			if (tokenAccounts.value.length === 0 && rawTokenAccounts.value.length === 0) {
+				console.log('Debug: Still 0 accounts, trying with finalized commitment...');
+				try {
+					const finalizedConnection = new Connection(
+						process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string,
+						'finalized'
+					);
+					
+					const finalizedTokenAccounts = await finalizedConnection.getParsedTokenAccountsByOwner(
+						publicKey,
+						{ programId: TOKEN_PROGRAM_ID }
+					);
+					console.log(`Finalized commitment found ${finalizedTokenAccounts.value.length} token accounts`);
+					
+					if (finalizedTokenAccounts.value.length > 0) {
+						tokenAccounts = finalizedTokenAccounts;
+					}
+				} catch (error4) {
+					console.error('Debug: Finalized commitment method failed:', error4);
+				}
+			}
 
-			console.log(`Found ${tokenAccounts.value.length} token accounts`);
+			console.log(`Final result: Found ${tokenAccounts.value.length} token accounts`);
+			console.log('Debug: Token accounts response:', tokenAccounts);
+
+			// Debug: Log all token accounts first
+			console.log('Debug: All token accounts:');
+			tokenAccounts.value.forEach((account, index) => {
+				const parsedInfo = account.account.data.parsed.info;
+				console.log(`Account ${index}:`, {
+					mint: parsedInfo.mint,
+					uiAmount: parsedInfo.tokenAmount.uiAmount,
+					amount: parsedInfo.tokenAmount.amount,
+					decimals: parsedInfo.tokenAmount.decimals,
+					owner: parsedInfo.owner
+				});
+			});
 
 			const tokenData: TokenAccount[] = [];
 			
@@ -226,25 +353,26 @@ export default function WalletPage() {
 				const parsedInfo = account.account.data.parsed.info;
 				const balance = parsedInfo.tokenAmount.uiAmount || 0;
 				
-				// Only include tokens with positive balance
-				if (balance > 0) {
-					console.log(`Token ${parsedInfo.mint}: balance = ${balance}`);
-					
-					// Fetch metadata for this token
-					const metadata = await fetchTokenMetadata(parsedInfo.mint);
-					
-					tokenData.push({
-						mint: parsedInfo.mint,
-						balance: balance,
-						decimals: parsedInfo.tokenAmount.decimals,
-						symbol: metadata.symbol,
-						name: metadata.name,
-						logoURI: metadata.logoURI
-					});
-				}
+				console.log(`Processing token: ${parsedInfo.mint}, balance: ${balance}`);
+				
+				// Include ALL tokens found in the wallet
+				console.log(`  ✅ INCLUDING - Token found in wallet`);
+				
+				// Fetch metadata for this token
+				const metadata = await fetchTokenMetadata(parsedInfo.mint);
+				console.log(`  - Metadata:`, metadata);
+				
+				tokenData.push({
+					mint: parsedInfo.mint,
+					balance: balance,
+					decimals: parsedInfo.tokenAmount.decimals,
+					symbol: metadata.symbol,
+					name: metadata.name,
+					logoURI: metadata.logoURI
+				});
 			}
 
-			console.log(`Filtered to ${tokenData.length} tokens with positive balances`);
+			console.log(`Processed ${tokenData.length} tokens from wallet`);
 
 			// Fetch prices for all tokens
 			const tokenMints = tokenData.map(token => token.mint);
@@ -293,11 +421,11 @@ export default function WalletPage() {
 
 	if (!authenticated || !user) {
 		return (
-			<div className="min-h-screen bg-black text-white">
+			<div className="min-h-screen" style={{ backgroundColor: '#2E4744' }}>
 				<Navigation />
 				<div className="flex items-center justify-center min-h-[calc(100vh-4rem)] mt-16">
 					<div className="text-center">
-						<h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+						<h1 className="text-2xl font-bold mb-4 text-gray-100">Access Denied</h1>
 						<p className="text-gray-400 mb-6">Please log in to view your wallet</p>
 						<Link
 							href="/"
@@ -313,11 +441,11 @@ export default function WalletPage() {
 
 	if (!solanaWallet) {
 		return (
-			<div className="min-h-screen bg-black text-white">
+			<div className="min-h-screen" style={{ backgroundColor: '#2E4744' }}>
 				<Navigation />
 				<div className="flex items-center justify-center min-h-[calc(100vh-4rem)] mt-16">
 					<div className="text-center">
-						<h1 className="text-2xl font-bold mb-4">No Solana Wallet Found</h1>
+						<h1 className="text-2xl font-bold mb-4 text-gray-100">No Solana Wallet Found</h1>
 						<p className="text-gray-400 mb-6">
 							Please create a Solana wallet to view wallet information
 						</p>
@@ -386,275 +514,342 @@ export default function WalletPage() {
 		}
 	};
 
+	// Calculate total portfolio value
+	const calculateTotalPortfolioValue = () => {
+		const solValue = balance * solPrice;
+		const tokenValues = tokens.reduce((total, token) => {
+			return total + (token.balance * (token.price || 0));
+		}, 0);
+		return solValue + tokenValues;
+	};
+
 	return (
-		<div className="min-h-screen bg-black text-white">
+		<div className="min-h-screen" style={{ backgroundColor: '#2E4744' }}>
 			<Navigation />
-			<div className="container mx-auto px-4 py-6 mt-16">
-				{/* Header */}
-				<div className="flex items-center gap-4 mb-6">
-					<h1 className="text-2xl font-bold">Portfolio</h1>
+			<div className="container mx-auto px-4 py-6">
+				{/* Header with Back Button */}
+				<div className="mb-8 pt-16">
+					<div className="max-w-4xl mx-auto">
+						<div className="flex items-center gap-4 mb-6">
+							<Link
+								href="/stocks"
+								className="p-2 hover:bg-gray-800/50 rounded-lg transition-all duration-200 hover:scale-105"
+								style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)' }}
+							>
+								<ArrowLeft className="h-5 w-5 text-white" />
+							</Link>
+							<div className="flex-1">
+								<h1 className="text-3xl font-bold text-gray-100 mb-2">Portfolio</h1>
+								<p className="text-gray-400">Manage your investments</p>
+							</div>
+						</div>
+					</div>
 				</div>
 
 				{/* Portfolio Card */}
-				<div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 mb-6 relative overflow-hidden">
-					{/* Background Pattern */}
-					<div className="absolute inset-0 opacity-10">
-						<div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500 to-purple-600 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
-					</div>
-					
-					<div className="relative z-10">
-						<div className="flex items-center justify-between mb-2">
-							<div className="flex items-center gap-2">
-								<span className="text-sm text-gray-400 uppercase tracking-wide">BALANCE</span>
-								<div className="w-4 h-4 bg-gray-600 rounded-full flex items-center justify-center">
-									<span className="text-xs text-gray-300">i</span>
+				<div className="max-w-4xl mx-auto mb-6">
+					<div className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+						style={{
+							background: '#1A1A1A',
+							border: '1px solid rgba(255, 255, 255, 0.1)',
+							boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+						}}>
+						<div className="relative z-10">
+							<div className="flex items-center justify-between mb-4">
+								<div className="flex items-center gap-2">
+									<span className="text-sm text-gray-400 uppercase tracking-wide">TOTAL PORTFOLIO VALUE</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<div className="text-right">
+										<p className="text-xs text-gray-400 mb-1">Wallet Address</p>
+										<p className="font-mono text-xs text-gray-300">{formatAddress(solanaWallet.address)}</p>
+									</div>
+									<button
+										onClick={copyToClipboard}
+										className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+									>
+										{copied ? (
+											<Check className="h-4 w-4 text-green-500" />
+										) : (
+											<Copy className="h-4 w-4 text-gray-400" />
+										)}
+									</button>
 								</div>
 							</div>
-							<div className="flex items-center gap-2">
-								<div className="text-right">
-									<p className="text-xs text-gray-400 mb-1">Wallet Address</p>
-									<p className="font-mono text-xs text-gray-300">{formatAddress(solanaWallet.address)}</p>
+							
+							{loading ? (
+								<div className="animate-pulse">
+									<div className="h-12 bg-gray-700 rounded w-48 mb-2"></div>
+									<div className="h-4 bg-gray-700 rounded w-32"></div>
 								</div>
-								<button
-									onClick={copyToClipboard}
-									className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+							) : (
+								<>
+									<div className="text-5xl font-bold mb-2 text-white">${calculateTotalPortfolioValue().toFixed(2)}</div>
+									<div className="text-sm text-gray-400">
+										SOL: ${solPrice.toFixed(2)}
+									</div>
+								</>
+							)}
+							
+							{/* Action Button */}
+							<div className="mt-6">
+								<button 
+									className="w-full bg-[#D9FF66] text-black rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors font-semibold hover:bg-[#B8E62E]"
 								>
-									{copied ? (
-										<Check className="h-4 w-4 text-green-500" />
-									) : (
-										<Copy className="h-4 w-4 text-gray-400" />
-									)}
+									<Send className="h-4 w-4" />
+									<span>Cash Out</span>
 								</button>
 							</div>
-						</div>
-						
-						{loading ? (
-							<div className="animate-pulse">
-								<div className="h-12 bg-gray-700 rounded w-48 mb-2"></div>
-								<div className="h-4 bg-gray-700 rounded w-32"></div>
-							</div>
-						) : (
-							<>
-					<div className="text-5xl font-bold mb-2">${(balance * solPrice).toFixed(2)}</div>
-					<div className="text-sm text-gray-400">
-						SOL: ${solPrice.toFixed(2)}
-					</div>
-				</>
-						)}
-						
-						{/* Action Buttons */}
-						<div className="flex gap-3 mt-6">
-							<button className="flex-1 bg-gray-700 hover:bg-gray-600 rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors">
-								<ArrowDown className="h-4 w-4" />
-								<span className="font-medium">Receive</span>
-							</button>
-							<button className="flex-1 bg-gray-700 hover:bg-gray-600 rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors">
-								<CreditCard className="h-4 w-4" />
-								<span className="font-medium">Buy</span>
-							</button>
-							<button className="flex-1 bg-gray-700 hover:bg-gray-600 rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors">
-								<Coins className="h-4 w-4" />
-								<span className="font-medium">Stake</span>
-							</button>
-							<button className="flex-1 bg-gray-700 hover:bg-gray-600 rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors">
-								<Send className="h-4 w-4" />
-								<span className="font-medium">Send</span>
-							</button>
 						</div>
 					</div>
 				</div>
 
 				{/* Tab Navigation */}
-				<div className="flex bg-gray-900 rounded-lg p-1 mb-6">
-					<button
-						onClick={() => setActiveTab('holdings')}
-						className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-							activeTab === 'holdings'
-								? 'bg-gray-700 text-white'
-								: 'text-gray-400 hover:text-white'
-						}`}
-					>
-						Holdings
-					</button>
-					<button
-						onClick={() => setActiveTab('history')}
-						className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-							activeTab === 'history'
-								? 'bg-gray-700 text-white'
-								: 'text-gray-400 hover:text-white'
-						}`}
-					>
-						Transaction History
-					</button>
+				<div className="max-w-4xl mx-auto mb-6">
+					<div className="flex rounded-lg p-1"
+						style={{
+							background: '#1A1A1A',
+							border: '1px solid rgba(255, 255, 255, 0.1)',
+							boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+						}}>
+						<button
+							onClick={() => setActiveTab('tokens')}
+							className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+								activeTab === 'tokens'
+									? 'bg-[#D9FF66] text-black'
+									: 'text-gray-400 hover:text-white'
+							}`}
+							style={activeTab !== 'tokens' ? {
+								backgroundColor: 'rgba(255, 255, 255, 0.1)',
+								border: '1px solid rgba(255, 255, 255, 0.2)'
+							} : {}}
+						>
+							Tokens
+						</button>
+						<button
+							onClick={() => setActiveTab('history')}
+							className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+								activeTab === 'history'
+									? 'bg-[#D9FF66] text-black'
+									: 'text-gray-400 hover:text-white'
+							}`}
+							style={activeTab !== 'history' ? {
+								backgroundColor: 'rgba(255, 255, 255, 0.1)',
+								border: '1px solid rgba(255, 255, 255, 0.2)'
+							} : {}}
+						>
+							History
+						</button>
+					</div>
 				</div>
 
 				{/* Content Area */}
-				{loading ? (
-					<div className="bg-gray-900 rounded-lg p-6">
-						<div className="animate-pulse space-y-4">
+				<div className="max-w-4xl mx-auto">
+					{loading ? (
+						<div className="space-y-4">
 							{[...Array(3)].map((_, i) => (
-								<div key={i} className="flex items-center justify-between">
-									<div className="flex items-center gap-3">
-										<div className="w-10 h-10 bg-gray-700 rounded-full"></div>
-										<div>
-											<div className="h-4 bg-gray-700 rounded w-20 mb-1"></div>
-											<div className="h-3 bg-gray-700 rounded w-16"></div>
+								<div key={i} className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
+									style={{
+										background: '#1A1A1A',
+										border: '1px solid rgba(255, 255, 255, 0.1)',
+										boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+									}}>
+									<div className="animate-pulse space-y-4">
+										<div className="flex items-center justify-between">
+											<div className="flex items-center gap-3">
+												<div className="w-10 h-10 bg-gray-700 rounded-full"></div>
+												<div>
+													<div className="h-4 bg-gray-700 rounded w-20 mb-1"></div>
+													<div className="h-3 bg-gray-700 rounded w-16"></div>
+												</div>
+											</div>
+											<div className="text-right">
+												<div className="h-4 bg-gray-700 rounded w-16 mb-1"></div>
+												<div className="h-3 bg-gray-700 rounded w-12"></div>
+											</div>
 										</div>
-									</div>
-									<div className="text-right">
-										<div className="h-4 bg-gray-700 rounded w-16 mb-1"></div>
-										<div className="h-3 bg-gray-700 rounded w-12"></div>
 									</div>
 								</div>
 							))}
 						</div>
-					</div>
-				) : error ? (
-					<div className="bg-gray-900 rounded-lg p-6 text-center">
-						<p className="text-red-400 mb-4">{error}</p>
-						<button
-							onClick={fetchWalletData}
-							className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-						>
-							Retry
-						</button>
-					</div>
-				) : activeTab === 'holdings' ? (
-					<div className="space-y-4">
-						{/* SOL Balance */}
-						<div className="bg-gray-900 rounded-lg p-4">
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-3">
-									<div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
-										<span className="text-white font-bold text-sm">SOL</span>
-									</div>
-									<div>
-										<p className="font-medium text-white">Solana</p>
-										<p className="text-sm text-gray-400">SOL</p>
-									</div>
-								</div>
-								<div className="text-right">
-										<p className="font-medium text-white">{balance.toFixed(2)} SOL</p>
-										<p className="text-sm text-gray-400">${(balance * solPrice).toFixed(2)}</p>
-									</div>
-							</div>
+					) : error ? (
+						<div className="relative overflow-hidden rounded-2xl p-6 text-center"
+							style={{
+								background: '#1A1A1A',
+								border: '1px solid rgba(255, 255, 255, 0.1)',
+								boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+							}}>
+							<p className="text-red-400 mb-4">{error}</p>
+							<button
+								onClick={fetchWalletData}
+								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+							>
+								Retry
+							</button>
 						</div>
-
-						{/* Token Holdings */}
-						{tokens.length > 0 ? (
-							tokens.map((token, index) => (
-							<div key={index} className="bg-gray-900 rounded-lg p-4">
+					) : activeTab === 'tokens' ? (
+						<div className="space-y-4">
+							{/* SOL Balance */}
+							<div className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
+								style={{
+									background: '#1A1A1A',
+									border: '1px solid rgba(255, 255, 255, 0.1)',
+									boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+								}}>
 								<div className="flex items-center justify-between">
 									<div className="flex items-center gap-3">
-										{token.logoURI ? (
-											<img 
-												src={token.logoURI} 
-												alt={token.symbol || 'Token'}
-												className="w-10 h-10 rounded-full"
-												onError={(e) => {
-													// Fallback to text if image fails to load
-													const target = e.target as HTMLImageElement;
-													target.style.display = 'none';
-													const fallback = target.nextElementSibling as HTMLElement;
-													if (fallback) fallback.style.display = 'flex';
-												}}
-											/>
-										) : null}
-										<div 
-											className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center"
-											style={{ display: token.logoURI ? 'none' : 'flex' }}
-										>
-											<span className="text-white font-bold text-xs">
-												{token.symbol?.slice(0, 3) || "TKN"}
-											</span>
+										<div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+											<span className="text-white font-bold text-sm">SOL</span>
 										</div>
 										<div>
-											<p className="font-medium text-white">
-												{token.name || token.symbol || "Unknown Token"}
-											</p>
-											<p className="text-sm text-gray-400">
-												{token.symbol || formatAddress(token.mint)}
-											</p>
+											<p className="font-medium text-white">Solana</p>
+											<p className="text-sm text-gray-400">SOL</p>
 										</div>
 									</div>
 									<div className="text-right">
-										<p className="font-medium text-white">
-													{token.balance.toFixed(2)} {token.symbol || 'TOKENS'}
-												</p>
-										<p className="text-sm text-gray-400">
-											{token.price && token.price > 0 
-												? `$${(token.balance * token.price).toFixed(2)}`
-												: 'Price unavailable'
-											}
-										</p>
+										<p className="font-medium text-white">{balance.toFixed(2)} SOL</p>
+										<p className="text-sm text-gray-400">${(balance * solPrice).toFixed(2)}</p>
 									</div>
 								</div>
 							</div>
-						))
-						) : null}
-					</div>
-				) : (
-					<div className="space-y-4">
-						{transactions.length > 0 ? (
-						transactions.map((tx, index) => (
-							<div 
-								key={index} 
-								className="bg-gray-900 rounded-lg p-4 cursor-pointer hover:bg-gray-800 transition-colors"
-								onClick={() => openTransactionExplorer(tx.signature)}
-							>
-								<div className="flex items-center justify-between">
-									<div className="flex items-center gap-3">
-										<div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-											{getTransactionIcon(tx.type)}
-										</div>
-										<div>
-											<div className="flex items-center gap-2">
+
+							{/* Token Holdings */}
+							{tokens.length > 0 ? (
+								tokens.map((token, index) => (
+								<div key={index} className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
+									style={{
+										background: '#1A1A1A',
+										border: '1px solid rgba(255, 255, 255, 0.1)',
+										boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+									}}>
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-3">
+											{token.logoURI ? (
+												<img 
+													src={token.logoURI} 
+													alt={token.symbol || 'Token'}
+													className="w-10 h-10 rounded-full"
+													onError={(e) => {
+														// Fallback to text if image fails to load
+														const target = e.target as HTMLImageElement;
+														target.style.display = 'none';
+														const fallback = target.nextElementSibling as HTMLElement;
+														if (fallback) fallback.style.display = 'flex';
+													}}
+												/>
+											) : null}
+											<div 
+												className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center"
+												style={{ display: token.logoURI ? 'none' : 'flex' }}
+											>
+												<span className="text-white font-bold text-xs">
+													{token.symbol?.slice(0, 3) || "TKN"}
+												</span>
+											</div>
+											<div>
 												<p className="font-medium text-white">
-													{getTransactionLabel(tx.type)}
+													{token.name || token.symbol || "Unknown Token"}
 												</p>
-												{tx.amount && tx.amount > 0 && (
-													<span className={`text-sm font-medium ${
-														tx.type === 'sent' ? 'text-red-400' : 'text-green-400'
-													}`}>
-														{tx.type === 'sent' ? '-' : '+'}{tx.amount.toFixed(2)} {tx.tokenSymbol || 'SOL'}
-													</span>
-												)}
-											</div>
-											<div className="flex items-center gap-2">
 												<p className="text-sm text-gray-400">
-													{tx.timestamp ? formatDate(tx.timestamp) : "Unknown date"}
-												</p>
-												<p className="text-xs text-gray-500">
-													{formatAddress(tx.signature)}
+													{token.symbol || formatAddress(token.mint)}
 												</p>
 											</div>
 										</div>
-									</div>
-									<div className="flex items-center gap-2">
-										<Badge
-											variant={tx.type === "failed" ? "outline" : tx.type === "sent" ? "secondary" : "default"}
-											className={tx.type === "failed" ? "border-red-500 text-red-400" : ""}
-										>
-											{getTransactionLabel(tx.type)}
-										</Badge>
-										<ExternalLink className="h-4 w-4 text-gray-400" />
+										<div className="text-right">
+											<p className="font-medium text-white">
+												{token.balance.toFixed(2)} {token.symbol || 'TOKENS'}
+											</p>
+											<p className="text-sm text-gray-400">
+												{token.price && token.price > 0 
+													? `$${(token.balance * token.price).toFixed(2)}`
+													: 'Price unavailable'
+												}
+											</p>
+										</div>
 									</div>
 								</div>
-							</div>
-						))
-						) : (
-							<div className="bg-gray-900 rounded-lg p-8 text-center">
-								<div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-									<Clock className="h-8 w-8 text-gray-600" />
+							))
+							) : null}
+						</div>
+					) : (
+						<div className="space-y-4">
+							{transactions.length > 0 ? (
+							transactions.map((tx, index) => (
+								<div 
+									key={index} 
+									className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300 cursor-pointer hover:scale-105 hover:shadow-2xl"
+									style={{
+										background: '#1A1A1A',
+										border: '1px solid rgba(255, 255, 255, 0.1)',
+										boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+									}}
+									onClick={() => openTransactionExplorer(tx.signature)}
+								>
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-3">
+											<div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+												{getTransactionIcon(tx.type)}
+											</div>
+											<div>
+												<div className="flex items-center gap-2">
+													<p className="font-medium text-white">
+														{getTransactionLabel(tx.type)}
+													</p>
+													{tx.amount && tx.amount > 0 && (
+														<span className={`text-sm font-medium ${
+															tx.type === 'sent' ? 'text-red-400' : 'text-green-400'
+														}`}>
+															{tx.type === 'sent' ? '-' : '+'}{tx.amount.toFixed(2)} {tx.tokenSymbol || 'SOL'}
+														</span>
+													)}
+												</div>
+												<div className="flex items-center gap-2">
+													<p className="text-sm text-gray-400">
+														{tx.timestamp ? formatDate(tx.timestamp) : "Unknown date"}
+													</p>
+													<p className="text-xs text-gray-500">
+														{formatAddress(tx.signature)}
+													</p>
+												</div>
+											</div>
+										</div>
+										<div className="flex items-center gap-2">
+											<Badge
+												variant="outline"
+												className={
+													tx.type === "failed" 
+														? "border-red-500 text-red-400" 
+														: tx.type === "sent"
+														? "border-orange-500 text-orange-400"
+														: "border-green-500 text-green-400"
+												}
+											>
+												{getTransactionLabel(tx.type)}
+											</Badge>
+											<ExternalLink className="h-4 w-4 text-gray-400" />
+										</div>
+									</div>
 								</div>
-								<h3 className="text-xl font-semibold text-white mb-2">No Transactions Yet</h3>
-								<p className="text-gray-400">
-									Your transaction history will appear here once you start using your wallet.
-								</p>
-							</div>
-						)}
-					</div>
-				)}
+							))
+							) : (
+								<div className="relative overflow-hidden rounded-2xl p-8 text-center"
+									style={{
+										background: '#1A1A1A',
+										border: '1px solid rgba(255, 255, 255, 0.1)',
+										boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+									}}>
+									<div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+										<Clock className="h-8 w-8 text-gray-600" />
+									</div>
+									<h3 className="text-xl font-semibold text-white mb-2">No Transactions Yet</h3>
+									<p className="text-gray-400">
+										Your transaction history will appear here once you start using your wallet.
+									</p>
+								</div>
+							)}
+						</div>
+					)}
+				</div>
 			</div>
 		</div>
 	);

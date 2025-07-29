@@ -19,11 +19,42 @@ interface CachedTokenData {
 // Cache for token prices (1 minute cache)
 const tokenPriceCache = new Map<string, CachedTokenData>();
 
+// Smart cache tracking
+const tokenAccessCount = new Map<string, number>();
+const tokenLastAccess = new Map<string, number>();
+
 // Rate limiting with exponential backoff
 let lastBirdeyeCall = 0;
 const BIRDEYE_RATE_LIMIT = 3000; // 3 seconds between calls (very conservative)
 let consecutiveFailures = 0;
 const MAX_CONSECUTIVE_FAILURES = 3;
+
+// Smart cache invalidation based on popularity
+function shouldInvalidateCache(tokenAddress: string): boolean {
+  const now = Date.now();
+  const accessCount = tokenAccessCount.get(tokenAddress) || 0;
+  const lastAccess = tokenLastAccess.get(tokenAddress) || 0;
+  
+  // If token is frequently accessed, refresh more often
+  if (accessCount > 10) {
+    return (now - lastAccess) > (5 * 60 * 1000); // 5 minutes for popular tokens
+  }
+  
+  // If token is rarely accessed, use longer cache
+  if (accessCount < 3) {
+    return (now - lastAccess) > (15 * 60 * 1000); // 15 minutes for unpopular tokens
+  }
+  
+  // Default: 8 minutes for average tokens
+  return (now - lastAccess) > (8 * 60 * 1000);
+}
+
+// Track token access when requested
+function trackTokenAccess(tokenAddress: string) {
+  const currentCount = tokenAccessCount.get(tokenAddress) || 0;
+  tokenAccessCount.set(tokenAddress, currentCount + 1);
+  tokenLastAccess.set(tokenAddress, Date.now());
+}
 
 /**
  * Fetch token data from Birdeye API via our proxy (single token)
@@ -110,12 +141,15 @@ export async function fetchTokenData(tokenAddress: string) {
       throw new Error('Invalid token address');
     }
     
-    // Check cache first (1 minute cache)
+    // Track this access for smart caching
+    trackTokenAccess(tokenAddress);
+    
+    // Check cache with smart invalidation
     const now = Date.now();
     const cacheEntry = tokenPriceCache.get(tokenAddress);
     
-    if (cacheEntry && (now - cacheEntry.timestamp < 60000)) {
-      console.log(`Using cached price for ${tokenAddress}: $${cacheEntry.price.toFixed(4)}`);
+    if (cacheEntry && !shouldInvalidateCache(tokenAddress)) {
+      console.log(`Using smart cached price for ${tokenAddress}: $${cacheEntry.price.toFixed(4)}`);
       return {
         price: cacheEntry.price,
         marketCap: cacheEntry.marketCap,

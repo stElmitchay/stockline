@@ -35,9 +35,12 @@ export function StockFilters({
               onClick={() => onSortChange(option.value as SortOption)}
               className={`text-xs px-2 py-1 h-7 ${
                 sortBy === option.value 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 border-gray-600'
+                  ? 'text-black' 
+                  : 'text-gray-300 border-gray-600 hover:bg-gray-700'
               }`}
+              style={{
+                backgroundColor: sortBy === option.value ? '#D9FF66' : '#1A1A1A'
+              }}
             >
               {option.label}
             </Button>
@@ -52,7 +55,12 @@ export function StockFilters({
             size="sm"
             variant="outline"
             onClick={onRefresh}
-            className="text-xs px-3 py-1.5 h-8 text-blue-400 hover:text-blue-300 border-blue-500/50 hover:border-blue-400/50 bg-blue-600/10 hover:bg-blue-600/20"
+            className="text-xs px-3 py-1.5 h-8 text-gray-300 hover:text-white"
+            style={{
+              backgroundColor: 'transparent',
+              border: '1px solid #D9FF66',
+              color: '#D9FF66'
+            }}
           >
             Refresh Data
           </Button>

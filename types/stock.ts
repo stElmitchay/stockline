@@ -6,7 +6,7 @@ export interface Stock {
   change24h?: number;
   marketCap?: number;
   volume24h?: number;
-  logo?: string;
+  logoUrl?: string;
   solscanUrl?: string;
 }
 

@@ -1,26 +1,107 @@
 @import "tailwindcss";
 
 :root {
-	--background: #ffffff;
-	--foreground: #171717;
+  /* Main Background - Dark Teal from reference */
+  --background: #2E4744;
+  --foreground: #FFFFFF;
+  
+  /* Card Backgrounds */
+  --card-dark: #1A1A1A;
+  --card-lime: #D9FF66;
+  --card-white: #FFFFFF;
+  --card-purple: #8C66FF;
+  
+  /* Text Colors */
+  --text-dark: #1A1A1A;
+  --text-white: #FFFFFF;
+  --text-green: #4CAF50;
+  --text-purple: #8C66FF;
+  
+  /* Chart Colors */
+  --chart-yellow: #FFFF80;
+  --chart-orange: #FFC080;
+  --chart-green: #80FF80;
+  --chart-teal: #4CAF50;
+  --chart-purple: #8C66FF;
 }
 
 @theme inline {
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--font-sans: var(--font-geist-sans);
-	--font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-	:root {
-		--background: #0a0a0a;
-		--foreground: #ededed;
-	}
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-dark: var(--card-dark);
+  --color-card-lime: var(--card-lime);
+  --color-card-white: var(--card-white);
+  --color-card-purple: var(--card-purple);
+  --color-text-dark: var(--text-dark);
+  --color-text-white: var(--text-white);
+  --color-text-green: var(--text-green);
+  --color-text-purple: var(--text-purple);
+  --color-chart-yellow: var(--chart-yellow);
+  --color-chart-orange: var(--chart-orange);
+  --color-chart-green: var(--chart-green);
+  --color-chart-teal: var(--chart-teal);
+  --color-chart-purple: var(--chart-purple);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 }
 
 body {
-	background: var(--background);
-	color: var(--foreground);
-	font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Custom utility classes for the new design system */
+.card-dark {
+  background-color: var(--card-dark);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.card-lime {
+  background-color: var(--card-lime);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.card-white {
+  background-color: var(--card-white);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.card-purple {
+  background-color: var(--card-purple);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.text-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.text-large {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.text-medium {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.text-small {
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+  font-weight: 400;
 }

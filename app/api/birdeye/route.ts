@@ -71,7 +71,7 @@ async function handleSingleRequest(address: string) {
     headers: {
       'Accept': 'application/json',
       'x-chain': 'solana',
-      'X-API-KEY': process.env.BIRDEYE_API_KEY || '',
+      'X-API-KEY': process.env.BIRDEYE_API_KEY,
       'User-Agent': 'Mozilla/5.0 (compatible; Stockline/1.0)',
     },
   });

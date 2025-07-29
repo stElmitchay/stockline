@@ -4,121 +4,141 @@
       "symbol": "AAPLx",
       "name": "Apple xStock",
       "solanaAddress": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
-      "solscanUrl": "https://solscan.io/token/XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp"
+      "solscanUrl": "https://solscan.io/token/XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/AAPL.png"
     },
     {
       "symbol": "MSFTx",
       "name": "Microsoft xStock",
       "solanaAddress": "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
-      "solscanUrl": "https://solscan.io/token/XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX"
+      "solscanUrl": "https://solscan.io/token/XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/MSFT.png"
     },
     {
       "symbol": "TSLAx",
       "name": "Tesla xStock",
       "solanaAddress": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
-      "solscanUrl": "https://solscan.io/token/XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB"
+      "solscanUrl": "https://solscan.io/token/XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/TSLA.png"
     },
     {
       "symbol": "NVDAx",
       "name": "NVIDIA xStock",
       "solanaAddress": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
-      "solscanUrl": "https://solscan.io/token/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"
+      "solscanUrl": "https://solscan.io/token/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/NVDA.png"
     },
     {
       "symbol": "SPYx",
       "name": "SP500 xStock",
       "solanaAddress": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
-      "solscanUrl": "https://solscan.io/token/XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W"
+      "solscanUrl": "https://solscan.io/token/XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/SPY.png"
     },
     {
       "symbol": "AMZNx",
       "name": "Amazon xStock",
       "solanaAddress": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
-      "solscanUrl": "https://solscan.io/token/Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg"
+      "solscanUrl": "https://solscan.io/token/Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/AMZN.png"
     },
     {
       "symbol": "GOOGLx",
       "name": "Alphabet xStock",
       "solanaAddress": "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
-      "solscanUrl": "https://solscan.io/token/XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN"
+      "solscanUrl": "https://solscan.io/token/XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/GOOGL.png"
     },
     {
       "symbol": "METAx",
       "name": "Meta xStock",
       "solanaAddress": "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
-      "solscanUrl": "https://solscan.io/token/Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu"
+      "solscanUrl": "https://solscan.io/token/Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/META.png"
     },
     {
       "symbol": "COINx",
       "name": "Coinbase xStock",
       "solanaAddress": "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu",
-      "solscanUrl": "https://solscan.io/token/Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu"
+      "solscanUrl": "https://solscan.io/token/Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/COIN.png"
     },
     {
       "symbol": "MSTRx",
       "name": "MicroStrategy xStock",
       "solanaAddress": "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
-      "solscanUrl": "https://solscan.io/token/XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ"
+      "solscanUrl": "https://solscan.io/token/XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/MSTR.png"
     },
     {
       "symbol": "Vx",
       "name": "Visa xStock",
       "solanaAddress": "XsqgsbXwWogGJsNcVZ3TyVouy2MbTkfCFhCGGGcQZ2p",
-      "solscanUrl": "https://solscan.io/token/XsqgsbXwWogGJsNcVZ3TyVouy2MbTkfCFhCGGGcQZ2p"
+      "solscanUrl": "https://solscan.io/token/XsqgsbXwWogGJsNcVZ3TyVouy2MbTkfCFhCGGGcQZ2p",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/V.png"
     },
     {
       "symbol": "NFLXx",
       "name": "Netflix xStock",
       "solanaAddress": "XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL",
-      "solscanUrl": "https://solscan.io/token/XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL"
+      "solscanUrl": "https://solscan.io/token/XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/NFLX.png"
     },
     {
       "symbol": "DFDVx",
       "name": "DFDV xStock",
       "solanaAddress": "Xs2yquAgsHByNzx68WJC55WHjHBvG9JsMB7CWjTLyPy",
-      "solscanUrl": "https://solscan.io/token/Xs2yquAgsHByNzx68WJC55WHjHBvG9JsMB7CWjTLyPy"
+      "solscanUrl": "https://solscan.io/token/Xs2yquAgsHByNzx68WJC55WHjHBvG9JsMB7CWjTLyPy",
+      "logoUrl": "https://www.parqet.com/api/logos/stocks/DFDV"
     },
     {
       "symbol": "GMEx",
       "name": "GameStop xStock",
       "solanaAddress": "Xsf9mBktVB9BSU5kf4nHxPq5hCBJ2j2ui3ecFGxPRGc",
-      "solscanUrl": "https://solscan.io/token/Xsf9mBktVB9BSU5kf4nHxPq5hCBJ2j2ui3ecFGxPRGc"
+      "solscanUrl": "https://solscan.io/token/Xsf9mBktVB9BSU5kf4nHxPq5hCBJ2j2ui3ecFGxPRGc",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/GME.png"
     },
     {
       "symbol": "GLDx",
       "name": "Gold xStock",
       "solanaAddress": "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re",
-      "solscanUrl": "https://solscan.io/token/Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re"
+      "solscanUrl": "https://solscan.io/token/Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/GLD.png"
     },
     {
       "symbol": "CRCLx",
       "name": "Circle xStock",
       "solanaAddress": "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
-      "solscanUrl": "https://solscan.io/token/XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1"
+      "solscanUrl": "https://solscan.io/token/XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
+      "logoUrl": "https://www.parqet.com/api/logos/stocks/CRCL"
     },
     {
       "symbol": "MAx",
       "name": "Mastercard xStock",
       "solanaAddress": "XsApJFV9MAktqnAc6jqzsHVujxkGm9xcSUffaBoYLKC",
-      "solscanUrl": "https://solscan.io/token/XsApJFV9MAktqnAc6jqzsHVujxkGm9xcSUffaBoYLKC"
+      "solscanUrl": "https://solscan.io/token/XsApJFV9MAktqnAc6jqzsHVujxkGm9xcSUffaBoYLKC",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/MA.png"
     },
         {
       "symbol": "MCDx",
       "name": "McDonald xStock",
       "solanaAddress": "XsqE9cRRpzxcGKDXj1BJ7Xmg4GRhZoyY1KpmGSxAWT2",
-      "solscanUrl": "https://solscan.io/token/XsqE9cRRpzxcGKDXj1BJ7Xmg4GRhZoyY1KpmGSxAWT2"
+      "solscanUrl": "https://solscan.io/token/XsqE9cRRpzxcGKDXj1BJ7Xmg4GRhZoyY1KpmGSxAWT2",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/MCD.png"
     },
     {
       "symbol": "QQQx",
       "name": "Nasdaq xStock",
       "solanaAddress": "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
-      "solscanUrl": "https://solscan.io/token/Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ"
+      "solscanUrl": "https://solscan.io/token/Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/QQQ.png"
     },     
     {
       "symbol": "HOODx",
       "name": "Robinhood xStock",
       "solanaAddress": "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg",
-      "solscanUrl": "https://solscan.io/token/XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg"
+      "solscanUrl": "https://solscan.io/token/XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/HOOD.png"
     }
   ]
 }
