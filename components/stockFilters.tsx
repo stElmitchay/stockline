@@ -31,7 +31,7 @@ export function StockFilters({
             <Button
               key={option.value}
               size="sm"
-              variant={sortBy === option.value ? "default" : "outline"}
+              variant={sortBy === option.value ? "primary" : "outline"}
               onClick={() => onSortChange(option.value as SortOption)}
               className={`text-xs px-2 py-1 h-7 ${
                 sortBy === option.value 

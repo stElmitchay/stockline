@@ -17,7 +17,7 @@ export function StockCard({ stock }: StockCardProps) {
   const [copied, setCopied] = useState(false);
 
   // Check if this stock has been loaded (has a valid price)
-  const isLoaded = stock.price > 0;
+  const isLoaded = (stock.price ?? 0) > 0;
   const isPositive = (stock.change24h ?? 0) >= 0;
 
   const copyToClipboard = async (text: string) => {

@@ -66,12 +66,18 @@ async function handleSingleRequest(address: string) {
     const birdeyeUrl = `https://public-api.birdeye.so/defi/price?address=${address}`;
     console.log(`Birdeye API proxy: Using Birdeye endpoint: ${birdeyeUrl}`);
 
+  const apiKey = process.env.BIRDEYE_API_KEY;
+  if (!apiKey) {
+    console.error('Birdeye API proxy: Missing BIRDEYE_API_KEY environment variable');
+    return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+  }
+
   const response = await fetch(birdeyeUrl, {
     method: 'GET',
     headers: {
       'Accept': 'application/json',
       'x-chain': 'solana',
-      'X-API-KEY': process.env.BIRDEYE_API_KEY,
+      'X-API-KEY': apiKey,
       'User-Agent': 'Mozilla/5.0 (compatible; Stockline/1.0)',
     },
   });
@@ -137,12 +143,18 @@ async function handleBatchRequest(addressesParam: string, batchIndex?: string | 
       }
     
     try {
+      const apiKey = process.env.BIRDEYE_API_KEY;
+      if (!apiKey) {
+        console.error('Birdeye API proxy: Missing BIRDEYE_API_KEY environment variable');
+        return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+      }
+
       const response = await fetch(`https://public-api.birdeye.so/defi/price?address=${address}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
           'x-chain': 'solana',
-          'X-API-KEY': process.env.BIRDEYE_API_KEY || '',
+          'X-API-KEY': apiKey,
           'User-Agent': 'Mozilla/5.0 (compatible; Stockline/1.0)',
         },
       });
@@ -163,7 +175,7 @@ async function handleBatchRequest(addressesParam: string, batchIndex?: string | 
             headers: {
               'Accept': 'application/json',
               'x-chain': 'solana',
-              'X-API-KEY': process.env.BIRDEYE_API_KEY || '',
+              'X-API-KEY': apiKey,
               'User-Agent': 'Mozilla/5.0 (compatible; Stockline/1.0)',
             },
           });
