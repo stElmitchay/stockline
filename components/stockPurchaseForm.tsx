@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { CheckCircle, DollarSign, Upload, AlertCircle } from "lucide-react";
+import { CheckCircle, DollarSign, Upload, AlertCircle, Copy, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -26,6 +26,8 @@ export default function StockPurchaseForm({
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAmountFocused, setIsAmountFocused] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [showUSSDModal, setShowUSSDModal] = useState(false);
   
   // Get user data from Privy
   const userEmail = user?.email?.address || '';
@@ -59,9 +61,15 @@ export default function StockPurchaseForm({
     setFormData(prev => ({ ...prev, [field]: value }));
     setError(null);
     
-    // Notify parent component of amount changes
-    if (field === 'amountInLeones' && typeof value === 'string' && onAmountChange) {
-      onAmountChange(value);
+    // Notify parent component of amount changes and show USSD modal
+    if (field === 'amountInLeones' && typeof value === 'string') {
+      if (onAmountChange) {
+        onAmountChange(value);
+      }
+      // Show USSD modal when amount is entered (and not empty)
+      if (value.trim() && parseFloat(value) > 0) {
+        setShowUSSDModal(true);
+      }
     }
   };
 
@@ -69,6 +77,17 @@ export default function StockPurchaseForm({
     const file = e.target.files?.[0] || null;
     setFormData(prev => ({ ...prev, paymentReceipt: file }));
     setError(null);
+  };
+
+  const handleCopyUSSD = async () => {
+    const ussdCode = `#144*2*2*232864*${formData.amountInLeones}#`;
+    try {
+      await navigator.clipboard.writeText(ussdCode);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy USSD code:', err);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,14 +116,15 @@ export default function StockPurchaseForm({
       submitData.append('amountInLeones', formData.amountInLeones);
       submitData.append('stockTicker', formData.stockTicker);
       submitData.append('walletAddress', formData.walletAddress);
-      submitData.append('stockName', stockName);
-      submitData.append('stockPrice', stockPrice);
+      submitData.append('confirmation1', formData.confirmation1.toString());
+      submitData.append('confirmation2', formData.confirmation2.toString());
+      submitData.append('confirmationManualProcess', formData.confirmationManualProcess.toString());
       if (formData.paymentReceipt) {
         submitData.append('paymentReceipt', formData.paymentReceipt);
       }
 
       // Submit to API
-      const response = await fetch('/api/submit-purchase', {
+      const response = await fetch('/api/airtable/submit-stock-purchase', {
         method: 'POST',
         body: submitData,
       });
@@ -141,6 +161,34 @@ export default function StockPurchaseForm({
             <div className="text-gray-300 text-sm mt-1">
               Your request will be processed within 24-48 hours. You will receive a confirmation email shortly.
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <div className="max-w-md mx-auto p-6 rounded-2xl shadow-2xl transition-all duration-300"
+           style={{
+             background: 'rgba(46, 71, 68, 0.7)',
+             border: '1px solid rgba(255, 255, 255, 0.1)',
+             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+             backdropFilter: 'blur(10px)'
+           }}>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <AlertCircle className="h-6 w-6 text-orange-400" />
+            <div className="text-orange-400 font-semibold">Authentication Required</div>
+          </div>
+          <p className="text-gray-300 mb-6">
+            Please login to complete your purchase of {stockName} shares.
+          </p>
+          <div className="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+            <p className="text-sm text-orange-300">
+              You need to be logged in to access the stock purchase form and complete transactions.
+            </p>
           </div>
         </div>
       </div>
@@ -241,6 +289,8 @@ export default function StockPurchaseForm({
              </div>
            )}
 
+
+
            {/* Payment Receipt Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Payment Receipt *</label>
@@ -330,11 +380,104 @@ export default function StockPurchaseForm({
           ) : (
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              Submit Purchase Request
+              Buy Now
             </div>
           )}
         </Button>
       </form>
+
+      {/* USSD Code Modal */}
+      {showUSSDModal && formData.amountInLeones && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+             onClick={() => setShowUSSDModal(false)}>
+          <div className="max-w-md w-full p-6 rounded-2xl shadow-2xl transition-all duration-300"
+               onClick={(e) => e.stopPropagation()}
+               style={{
+                 background: 'rgba(46, 71, 68, 0.9)',
+                 border: '1px solid rgba(255, 255, 255, 0.1)',
+                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                 backdropFilter: 'blur(10px)'
+               }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-lg bg-orange-500/20">
+                <Smartphone className="h-6 w-6 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Orange Money Payment</h3>
+                <p className="text-sm text-gray-400">Copy and dial this code</p>
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-300 mb-3">
+                Copy this USSD code and dial it on your phone to complete the payment of <span className="text-orange-400 font-semibold">{parseFloat(formData.amountInLeones).toLocaleString()} SLL</span>:
+              </p>
+              
+              <div className="flex items-center gap-2 p-4 rounded-lg border border-white/20"
+                    style={{
+                      background: 'rgba(46, 71, 68, 0.5)',
+                      backdropFilter: 'blur(5px)'
+                    }}>
+                 <code className="flex-1 text-orange-300 font-mono text-lg font-bold break-all">
+                   #144*2*2*232864*{formData.amountInLeones}#
+                 </code>
+                <Button
+                  type="button"
+                  onClick={handleCopyUSSD}
+                  className="shrink-0 h-10 px-4 bg-orange-600 hover:bg-orange-700 text-white font-medium"
+                >
+                  {copySuccess ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            <div className="rounded-lg p-3 mb-4 border border-white/20"
+                  style={{
+                    background: 'rgba(46, 71, 68, 0.3)',
+                    backdropFilter: 'blur(5px)'
+                  }}>
+               <p className="text-xs text-gray-300 font-medium mb-1">Next Steps:</p>
+               <ol className="text-xs text-gray-400 space-y-1">
+                 <li>1. Copy the code above</li>
+                 <li>2. Dial it on your phone</li>
+                 <li>3. Enter your Orange Money PIN</li>
+                 <li>4. Take a screenshot of the confirmation</li>
+                 <li>5. Upload the screenshot below</li>
+               </ol>
+             </div>
+            
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                onClick={() => setShowUSSDModal(false)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white"
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  handleCopyUSSD();
+                  setShowUSSDModal(false);
+                }}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                Copy & Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
