@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { CheckCircle, DollarSign, Upload, AlertCircle, Copy, Smartphone } from "lucide-react";
+import { CheckCircle, DollarSign, Upload, AlertCircle, Copy, Smartphone, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import stocksData from "@/data/stocks.json";
 
 interface StockPurchaseFormProps {
   stockSymbol: string;
@@ -28,6 +29,15 @@ export default function StockPurchaseForm({
   const [isAmountFocused, setIsAmountFocused] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [showUSSDModal, setShowUSSDModal] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
+  const [stockLogoUrl, setStockLogoUrl] = useState<string | null>(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
+  
+  // Find stock logo URL from stocks data
+  useEffect(() => {
+    const stock = stocksData.xStocks.find(s => s.symbol === stockSymbol);
+    setStockLogoUrl(stock?.logoUrl || null);
+  }, [stockSymbol]);
   
   // Get user data from Privy
   const userEmail = user?.email?.address || '';
@@ -90,6 +100,212 @@ export default function StockPurchaseForm({
     }
   };
 
+  const generateReceiptData = () => {
+    const timestamp = new Date().toLocaleString();
+    const usdEquivalent = parseFloat(formData.amountInLeones) / USD_TO_SLL_RATE;
+    const estimatedShares = parseFloat(stockPrice) > 0 ? (usdEquivalent / parseFloat(stockPrice)) : 0;
+    
+    return {
+      timestamp,
+      stockSymbol,
+      stockName,
+      stockPrice,
+      amountInLeones: formData.amountInLeones,
+      usdEquivalent: usdEquivalent.toFixed(2),
+      estimatedShares: estimatedShares.toFixed(4),
+      mobileNumber: formData.mobileNumber,
+      walletAddress: formData.walletAddress,
+      email: formData.email
+    };
+  };
+
+  const downloadReceipt = async () => {
+    if (!receiptData) return;
+    
+    try {
+      // Create canvas manually to avoid CSS parsing issues
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context not available');
+      
+      // Set canvas dimensions to match receipt
+      canvas.width = 400;
+      canvas.height = 700;
+      
+      // Background
+      ctx.fillStyle = '#2E4744';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw patterned edges
+      const drawPatternedEdge = (side: 'left' | 'right' | 'bottom') => {
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        
+        if (side === 'left') {
+          ctx.beginPath();
+          ctx.moveTo(16, 0);
+          ctx.lineTo(16, canvas.height);
+          ctx.stroke();
+          
+          // Pattern fill
+          ctx.fillStyle = 'rgba(255,255,255,0.1)';
+          for (let y = 0; y < canvas.height; y += 20) {
+            ctx.fillRect(0, y, 16, 12);
+          }
+        } else if (side === 'right') {
+          ctx.beginPath();
+          ctx.moveTo(canvas.width - 16, 0);
+          ctx.lineTo(canvas.width - 16, canvas.height);
+          ctx.stroke();
+          
+          // Pattern fill
+          ctx.fillStyle = 'rgba(255,255,255,0.1)';
+          for (let y = 0; y < canvas.height; y += 20) {
+            ctx.fillRect(canvas.width - 16, y, 16, 12);
+          }
+        } else if (side === 'bottom') {
+          ctx.beginPath();
+          ctx.moveTo(0, canvas.height - 16);
+          ctx.lineTo(canvas.width, canvas.height - 16);
+          ctx.stroke();
+          
+          // Pattern fill
+          ctx.fillStyle = 'rgba(255,255,255,0.1)';
+          for (let x = 0; x < canvas.width; x += 20) {
+            ctx.fillRect(x, canvas.height - 16, 12, 16);
+          }
+        }
+      };
+      
+      drawPatternedEdge('left');
+      drawPatternedEdge('right');
+      drawPatternedEdge('bottom');
+      
+      // Reset line dash
+      ctx.setLineDash([]);
+      
+      // Draw stock logo/icon with gradient background
+      const drawStockLogo = () => {
+        const centerX = canvas.width / 2;
+        const centerY = 80;
+        const radius = 32;
+        
+        // Create gradient
+        const gradient = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+        gradient.addColorStop(0, '#F59E0B');
+        gradient.addColorStop(1, '#10B981');
+        
+        // Draw circle with gradient
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Draw stock symbol
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(receiptData.stockSymbol.charAt(0), centerX, centerY + 8);
+        
+        // Draw checkmark icon
+        const checkX = centerX + 20;
+        const checkY = centerY + 20;
+        ctx.fillStyle = '#10B981';
+        ctx.beginPath();
+        ctx.arc(checkX, checkY, 12, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Draw check symbol
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(checkX - 4, checkY);
+        ctx.lineTo(checkX - 1, checkY + 3);
+        ctx.lineTo(checkX + 4, checkY - 2);
+        ctx.stroke();
+      };
+      
+      drawStockLogo();
+      
+      // Title
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Stock Purchase Order', canvas.width / 2, 150);
+      
+      // Stock symbol and name
+      ctx.font = '16px Arial';
+      ctx.fillStyle = '#cccccc';
+      ctx.fillText(`${receiptData.stockSymbol} • ${receiptData.stockName}`, canvas.width / 2, 175);
+      
+      // Transaction details section
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px Arial';
+      ctx.fillText('Transaction Details', canvas.width / 2, 220);
+      
+      // Content area with margin for patterns
+      const contentMargin = 30;
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'left';
+      
+      // Details with icons
+      const details = [
+        ['📦 Item:', receiptData.stockName],
+        ['💰 Price:', `$${receiptData.usdEquivalent}`],
+        ['💵 Amount (SLL):', `${parseFloat(receiptData.amountInLeones).toLocaleString()} SLL`],
+        ['📅 Date:', new Date(receiptData.timestamp).toLocaleDateString()],
+        ['📱 Mobile:', receiptData.mobileNumber],
+        ['👛 Wallet:', `${receiptData.walletAddress.slice(0, 8)}...${receiptData.walletAddress.slice(-8)}`]
+      ];
+      
+      let yPos = 260;
+      details.forEach(([label, value]) => {
+        ctx.fillStyle = '#cccccc';
+        ctx.fillText(label, contentMargin, yPos);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(value, 180, yPos);
+        ctx.font = '14px Arial';
+        yPos += 35;
+      });
+      
+      // Separator line
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(contentMargin, yPos + 10);
+      ctx.lineTo(canvas.width - contentMargin, yPos + 10);
+      ctx.stroke();
+      
+      // Total section
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText('Total:', contentMargin, yPos + 50);
+      ctx.fillText(`$${receiptData.usdEquivalent}`, 180, yPos + 50);
+      
+      // Footer
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#cccccc';
+      ctx.textAlign = 'center';
+      ctx.fillText('Thank you for your purchase!', canvas.width / 2, canvas.height - 50);
+      
+      // Download
+      const link = document.createElement('a');
+      link.download = `stock-purchase-receipt-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png', 1.0);
+      link.click();
+      
+      console.log('Receipt generated successfully with full styling');
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+      console.error('Error details:', error instanceof Error ? error.message : String(error));
+      alert('Failed to generate receipt image. Please try again.');
+    }
+  };
+
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -134,15 +350,16 @@ export default function StockPurchaseForm({
         throw new Error(errorData.error || 'Failed to submit purchase request');
       }
 
+      // Generate receipt data
+      const receipt = generateReceiptData();
+      setReceiptData(receipt);
+      
       setIsSuccess(true);
       if (onSuccess) {
         onSuccess();
       }
 
-      // Reset form after 5 seconds
-      setTimeout(() => {
-        setIsSuccess(false);
-      }, 5000);
+      // Receipt will remain visible until user manually closes it
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -151,17 +368,166 @@ export default function StockPurchaseForm({
     }
   };
 
-  if (isSuccess) {
+  if (isSuccess && receiptData) {
     return (
-      <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-2xl">
-        <div className="flex items-center gap-3 mb-4">
-          <CheckCircle className="h-6 w-6 text-green-400" />
-          <div>
-            <div className="text-green-400 font-semibold">Purchase Request Submitted Successfully!</div>
-            <div className="text-gray-300 text-sm mt-1">
-              Your request will be processed within 24-48 hours. You will receive a confirmation email shortly.
+      <div className="max-w-md mx-auto space-y-4">
+        {/* Receipt */}
+        <div 
+          ref={receiptRef}
+          className="p-8 relative"
+          style={{
+            background: 'rgba(46, 71, 68, 0.95)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            borderRadius: '0px'
+          }}
+        >
+          {/* Left side cut pattern */}
+          <div className="absolute left-0 top-0 bottom-0 w-4" style={{
+            background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 8px, rgba(255,255,255,0.2) 8px, rgba(255,255,255,0.2) 12px)',
+            borderLeft: '2px dashed rgba(255,255,255,0.3)'
+          }}></div>
+          
+          {/* Right side cut pattern */}
+          <div className="absolute right-0 top-0 bottom-0 w-4" style={{
+            background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 8px, rgba(255,255,255,0.2) 8px, rgba(255,255,255,0.2) 12px)',
+            borderRight: '2px dashed rgba(255,255,255,0.3)'
+          }}></div>
+          
+          {/* Bottom cut pattern */}
+          <div className="absolute bottom-0 left-0 right-0 h-4" style={{
+            background: 'repeating-linear-gradient(to right, transparent 0px, transparent 8px, rgba(255,255,255,0.2) 8px, rgba(255,255,255,0.2) 12px)',
+            borderBottom: '2px dashed rgba(255,255,255,0.3)'
+          }}></div>
+          {/* Content with margins for cut patterns */}
+           <div className="mx-6 mb-6">
+           {/* Header with Stock Logo */}
+           <div className="text-center mb-8">
+            <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center relative">
+              {stockLogoUrl ? (
+                <img 
+                  src={stockLogoUrl} 
+                  alt={`${receiptData.stockName} logo`}
+                  className="w-16 h-16 object-contain"
+                  onError={(e) => {
+                    // Fallback to initials if logo fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.innerHTML = `<div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background: linear-gradient(135deg, #F59E0B 0%, #10B981 100%)"><span class="text-2xl font-bold text-white">${receiptData.stockSymbol.charAt(0)}</span></div>`;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #10B981 100%)' }}>
+                  <span className="text-2xl font-bold text-white">{receiptData.stockSymbol.charAt(0)}</span>
+                </div>
+              )}
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-4 w-4 text-white" />
+              </div>
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-2">Stock Purchase Order</h1>
+            <p className="text-gray-300 text-sm">{receiptData.stockSymbol} • {receiptData.stockName}</p>
+          </div>
+
+          {/* Transaction Details */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-white mb-4">Transaction details</h3>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Item</span>
+                <span className="text-white font-medium">{receiptData.stockName}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Price</span>
+                <span className="text-white font-medium">${receiptData.usdEquivalent}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Quantity</span>
+                <span className="text-white font-medium">{receiptData.estimatedShares} shares</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Method</span>
+                <span className="text-white font-medium">Mobile Money</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Amount (SLL)</span>
+                <span className="text-white font-medium">{parseFloat(receiptData.amountInLeones).toLocaleString()} SLL</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Date</span>
+                <span className="text-white font-medium">{new Date(receiptData.timestamp).toLocaleDateString()}</span>
+              </div>
+            </div>
+            
+            <div className="border-t border-white/20 mt-4 pt-4">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold text-white">Total:</span>
+                <span className="text-lg font-bold text-white">${receiptData.usdEquivalent}</span>
+              </div>
             </div>
           </div>
+
+          {/* Decorative Pattern Section */}
+          <div className="mt-6 pt-4 border-t border-white/20">
+            <div className="flex justify-center items-center space-x-2 mb-3">
+              <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(45deg, #F59E0B, #EAB308)' }}></div>
+              <div className="w-2 h-2 rounded-full" style={{ background: 'linear-gradient(45deg, #10B981, #059669)' }}></div>
+              <div className="w-4 h-4 rounded-full" style={{ background: 'linear-gradient(45deg, #8B5CF6, #7C3AED)' }}></div>
+              <div className="w-2 h-2 rounded-full" style={{ background: 'linear-gradient(45deg, #EF4444, #DC2626)' }}></div>
+              <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(45deg, #3B82F6, #2563EB)' }}></div>
+            </div>
+            
+            <div className="text-center">
+              <div className="w-16 h-2 rounded-full mx-auto" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(16, 185, 129, 0.3) 100%)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+              </div>
+            </div>
+            
+            <div className="flex justify-center mt-3">
+              <svg width="120" height="20" viewBox="0 0 120 20" className="opacity-30">
+                <defs>
+                  <linearGradient id="patternGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#F59E0B" />
+                    <stop offset="25%" stopColor="#10B981" />
+                    <stop offset="50%" stopColor="#8B5CF6" />
+                    <stop offset="75%" stopColor="#EF4444" />
+                    <stop offset="100%" stopColor="#3B82F6" />
+                  </linearGradient>
+                </defs>
+                <path d="M0 10 Q30 5 60 10 T120 10" stroke="url(#patternGradient)" strokeWidth="2" fill="none" />
+                <circle cx="20" cy="10" r="2" fill="#F59E0B" opacity="0.6" />
+                <circle cx="40" cy="8" r="1.5" fill="#10B981" opacity="0.6" />
+                <circle cx="60" cy="12" r="2" fill="#8B5CF6" opacity="0.6" />
+                <circle cx="80" cy="8" r="1.5" fill="#EF4444" opacity="0.6" />
+                <circle cx="100" cy="10" r="2" fill="#3B82F6" opacity="0.6" />
+              </svg>
+            </div>
+          </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <Button
+            onClick={downloadReceipt}
+            className="w-full flex items-center justify-center gap-2 !text-black font-semibold hover:opacity-90"
+            style={{
+              background: '#D9FF66',
+              borderRadius: '12px',
+              border: 'none'
+            }}
+          >
+            <Download className="h-4 w-4 text-black" />
+            Download Receipt
+          </Button>
         </div>
       </div>
     );
@@ -216,7 +582,7 @@ export default function StockPurchaseForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         {/* Purchase Details Section */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-gray-300 uppercase tracking-wide">Purchase Details</h3>

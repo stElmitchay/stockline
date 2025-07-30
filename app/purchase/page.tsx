@@ -35,11 +35,7 @@ function PurchaseForm() {
 
   const handleFormSuccess = () => {
     setShowSuccessMessage(true);
-    // Auto-hide success message after 5 seconds
-    setTimeout(() => {
-      setShowSuccessMessage(false);
-      window.location.href = '/stocks';
-    }, 5000);
+    // Success message will remain visible until user navigates away
   };
 
   // Listen for form submission success
@@ -47,11 +43,7 @@ function PurchaseForm() {
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'airtable-form-submitted') {
         setIsSuccess(true);
-        // Hide success message after 5 seconds and redirect to stocks page
-        setTimeout(() => {
-          setIsSuccess(false);
-          window.location.href = '/stocks';
-        }, 5000);
+        // Success state will remain until user navigates away
       }
     };
 
