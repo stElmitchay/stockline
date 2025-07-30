@@ -11,18 +11,21 @@ interface StockPurchaseFormProps {
   stockName: string;
   stockPrice: string;
   onSuccess?: () => void;
+  onAmountChange?: (amount: string) => void;
 }
 
 export default function StockPurchaseForm({ 
   stockSymbol, 
   stockName, 
   stockPrice, 
-  onSuccess 
+  onSuccess,
+  onAmountChange 
 }: StockPurchaseFormProps) {
   const { user } = usePrivy();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAmountFocused, setIsAmountFocused] = useState(false);
   
   // Get user data from Privy
   const userEmail = user?.email?.address || '';
@@ -31,6 +34,9 @@ export default function StockPurchaseForm({
   );
   const walletAddress = (solanaWalletAccount as any)?.address || '';
 
+  // Exchange rate (1 USD = 24.5 SLL)
+  const USD_TO_SLL_RATE = 24.5;
+  
   // Form state - only user-facing fields
   const [formData, setFormData] = useState({
     email: userEmail,
@@ -43,69 +49,77 @@ export default function StockPurchaseForm({
     confirmation2: false, // General confirmation
     confirmationManualProcess: false // "this transaction is process manually..."
   });
+  
+  // Calculate USD equivalent and shares
+  const usdEquivalent = formData.amountInLeones ? (parseFloat(formData.amountInLeones) / USD_TO_SLL_RATE) : 0;
+  const stockPriceNum = parseFloat(stockPrice) || 0;
+  const estimatedShares = stockPriceNum > 0 ? (usdEquivalent / stockPriceNum) : 0;
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError(null);
+    
+    // Notify parent component of amount changes
+    if (field === 'amountInLeones' && typeof value === 'string' && onAmountChange) {
+      onAmountChange(value);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setFormData(prev => ({ ...prev, paymentReceipt: file }));
-  };
-
-  const validateForm = () => {
-    if (!formData.email) return "Email is required";
-    if (!formData.mobileNumber) return "Mobile number is required";
-    if (!formData.amountInLeones) return "Amount in Leones is required";
-    if (!formData.walletAddress) return "Wallet address is required";
-    if (!formData.confirmation1) return "Please confirm you understand stock value fluctuations";
-    if (!formData.confirmation2) return "Please confirm the second checkbox";
-    if (!formData.confirmationManualProcess) return "Please confirm you understand the manual processing";
-    return null;
+    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // Validate required fields
+      if (!formData.mobileNumber || !formData.amountInLeones) {
+        throw new Error('Please fill in all required fields');
+      }
+
+      if (!formData.confirmation1 || !formData.confirmation2 || !formData.confirmationManualProcess) {
+        throw new Error('Please confirm all required checkboxes');
+      }
+
+      if (!formData.paymentReceipt) {
+        throw new Error('Please upload your payment receipt');
+      }
+
       // Create FormData for file upload
       const submitData = new FormData();
-      
-      // Add all form fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'paymentReceipt' && value instanceof File) {
-          submitData.append(key, value);
-        } else if (typeof value === 'boolean') {
-          submitData.append(key, value.toString());
-        } else if (value) {
-          submitData.append(key, value.toString());
-        }
-      });
+      submitData.append('email', formData.email);
+      submitData.append('mobileNumber', formData.mobileNumber);
+      submitData.append('amountInLeones', formData.amountInLeones);
+      submitData.append('stockTicker', formData.stockTicker);
+      submitData.append('walletAddress', formData.walletAddress);
+      submitData.append('stockName', stockName);
+      submitData.append('stockPrice', stockPrice);
+      if (formData.paymentReceipt) {
+        submitData.append('paymentReceipt', formData.paymentReceipt);
+      }
 
-      const response = await fetch('/api/airtable/submit-stock-purchase', {
+      // Submit to API
+      const response = await fetch('/api/submit-purchase', {
         method: 'POST',
         body: submitData,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit form');
+        throw new Error(errorData.error || 'Failed to submit purchase request');
       }
 
       setIsSuccess(true);
-      onSuccess?.();
-      
-      // Reset form after success
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      // Reset form after 5 seconds
       setTimeout(() => {
         setIsSuccess(false);
       }, 5000);
@@ -134,156 +148,183 @@ export default function StockPurchaseForm({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl p-6"
+    <div className="max-w-md mx-auto p-6 rounded-2xl shadow-2xl transition-all duration-300"
          style={{
-           background: '#1A1A1A',
+           background: 'rgba(46, 71, 68, 0.7)',
            border: '1px solid rgba(255, 255, 255, 0.1)',
-           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+           backdropFilter: 'blur(10px)'
          }}>
-      <h2 className="text-xl font-semibold text-gray-100 mb-6">Purchase Form</h2>
+
       
       {error && (
-        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
+        <div className="mb-4 p-3 rounded-lg flex items-center gap-2"
+             style={{
+               background: 'rgba(239, 68, 68, 0.1)',
+               border: '1px solid rgba(239, 68, 68, 0.3)'
+             }}>
           <AlertCircle className="h-4 w-4 text-red-400" />
-          <span className="text-red-400 text-sm">{error}</span>
+          <span className="text-red-300 text-sm">{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Email *</label>
-          <Input
-            type="email"
-            value={formData.email}
-            onChange={(e) => handleInputChange('email', e.target.value)}
-            className="bg-gray-800/50 border-gray-600 text-white"
-            required
-          />
-        </div>
-
-        {/* Mobile Number */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Mobile Number *</label>
-          <Input
-            type="tel"
-            value={formData.mobileNumber}
-            onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
-            className="bg-gray-800/50 border-gray-600 text-white"
-            placeholder="+1234567890"
-            required
-          />
-        </div>
-
-        {/* Amount in Leones */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Amount in Leones (SLL) *</label>
-          <Input
-            type="number"
-            value={formData.amountInLeones}
-            onChange={(e) => handleInputChange('amountInLeones', e.target.value)}
-            className="bg-gray-800/50 border-gray-600 text-white"
-            placeholder="0"
-            required
-          />
-        </div>
-
-        {/* Stock Ticker (readonly) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Stock Ticker</label>
-          <Input
-            type="text"
-            value={formData.stockTicker}
-            className="bg-gray-700/50 border-gray-600 text-gray-400"
-            readOnly
-          />
-        </div>
-
-        {/* Wallet Address (readonly) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Wallet Address</label>
-          <Input
-            type="text"
-            value={formData.walletAddress}
-            className="bg-gray-700/50 border-gray-600 text-gray-400 text-xs"
-            readOnly
-          />
-        </div>
-
-        {/* Payment Receipt Upload */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Payment Receipt</label>
-          <div className="relative">
-            <input
-              type="file"
-              onChange={handleFileChange}
-              accept="image/*,.pdf"
-              className="hidden"
-              id="payment-receipt"
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Purchase Details Section */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-300 uppercase tracking-wide">Purchase Details</h3>
+          
+          {/* Mobile Number */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Mobile Number *</label>
+            <p className="text-xs text-gray-400 mb-2">This is the number you will be sending the Orange Money payment from</p>
+            <Input
+              type="tel"
+              value={formData.mobileNumber}
+              onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
+              className="border-white/20 text-white"
+              style={{
+                background: 'rgba(46, 71, 68, 0.5)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(5px)'
+              }}
+              placeholder="Enter your mobile number"
+              required
             />
-            <label
-              htmlFor="payment-receipt"
-              className="flex items-center gap-2 p-3 border border-gray-600 rounded-lg cursor-pointer hover:bg-gray-800/50 transition-colors"
-            >
-              <Upload className="h-4 w-4 text-gray-400" />
-              <span className="text-gray-300 text-sm">
-                {formData.paymentReceipt ? formData.paymentReceipt.name : 'Choose file...'}
+          </div>
+
+          {/* Amount in Leones */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Amount in Leones *</label>
+            <Input
+              type="number"
+              value={formData.amountInLeones}
+              onChange={(e) => handleInputChange('amountInLeones', e.target.value)}
+              onFocus={() => setIsAmountFocused(true)}
+              onBlur={() => setIsAmountFocused(false)}
+              className="border-white/20 text-white"
+              style={{
+                background: 'rgba(46, 71, 68, 0.5)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(5px)'
+              }}
+              placeholder="Enter amount in Leones"
+              required
+            />
+          </div>
+
+           {/* Transaction Summary - Only show when amount field is focused */}
+           {isAmountFocused && formData.amountInLeones && (
+             <div className="p-4 rounded-lg border border-white/20 transition-all duration-300 ease-in-out"
+                  style={{
+                    background: 'rgba(46, 71, 68, 0.3)',
+                    backdropFilter: 'blur(5px)'
+                  }}>
+               <h4 className="text-sm font-medium text-gray-300 mb-3">Transaction Summary</h4>
+               <div className="space-y-2">
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-gray-400">Amount in Leones:</span>
+                   <span className="text-sm text-white font-medium">{parseFloat(formData.amountInLeones).toLocaleString()} SLL</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-gray-400">USD Equivalent:</span>
+                   <span className="text-sm text-green-400 font-medium">${usdEquivalent.toFixed(2)} USD</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-gray-400">Stock Price:</span>
+                   <span className="text-sm text-white font-medium">${stockPrice} USD</span>
+                 </div>
+                 <div className="flex justify-between items-center border-t border-white/10 pt-2">
+                   <span className="text-sm text-gray-300 font-medium">Estimated Shares:</span>
+                   <span className="text-sm text-yellow-400 font-bold">{estimatedShares.toFixed(4)} shares</span>
+                 </div>
+               </div>
+             </div>
+           )}
+
+           {/* Payment Receipt Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Payment Receipt *</label>
+            <div className="relative">
+              <input
+                type="file"
+                onChange={handleFileChange}
+                accept="image/*,.pdf"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                required
+              />
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-white/20 text-white pointer-events-none"
+                   style={{
+                     background: 'rgba(46, 71, 68, 0.5)',
+                     backdropFilter: 'blur(5px)'
+                   }}>
+                <Upload className="h-5 w-5 text-gray-400" />
+                <span className="text-sm">
+                  {formData.paymentReceipt ? formData.paymentReceipt.name : 'Upload payment receipt'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Confirmation Checkboxes */}
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.confirmation1}
+                onChange={(e) => handleInputChange('confirmation1', e.target.checked)}
+                className="mt-1 h-4 w-4 text-green-400 rounded focus:ring-green-400/30 focus:ring-2"
+                required
+              />
+              <span className="text-sm text-gray-300">
+                I understand the value of stocks can go up or down. *
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.confirmation2}
+                onChange={(e) => handleInputChange('confirmation2', e.target.checked)}
+                className="mt-1 h-4 w-4 text-green-400 rounded focus:ring-green-400/30 focus:ring-2"
+                required
+              />
+              <span className="text-sm text-gray-300">
+                I agree to the terms and conditions. *
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.confirmationManualProcess}
+                onChange={(e) => handleInputChange('confirmationManualProcess', e.target.checked)}
+                className="mt-1 h-4 w-4 text-green-400 rounded focus:ring-green-400/30 focus:ring-2"
+                required
+              />
+              <span className="text-sm text-gray-300">
+                I understand this transaction is processed manually, may take a few hours, and the final stock price can vary slightly from the estimate. *
               </span>
             </label>
           </div>
-        </div>
-
-        {/* Confirmations */}
-        <div className="space-y-3">
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.confirmation1}
-              onChange={(e) => handleInputChange('confirmation1', e.target.checked)}
-              className="mt-1 h-4 w-4 text-green-400 bg-gray-800 border-gray-600 rounded focus:ring-green-400"
-              required
-            />
-            <span className="text-sm text-gray-300">
-              I understand the value of stocks can go up or down. *
-            </span>
-          </label>
-
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.confirmation2}
-              onChange={(e) => handleInputChange('confirmation2', e.target.checked)}
-              className="mt-1 h-4 w-4 text-green-400 bg-gray-800 border-gray-600 rounded focus:ring-green-400"
-              required
-            />
-            <span className="text-sm text-gray-300">
-              I agree to the terms and conditions. *
-            </span>
-          </label>
-
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.confirmationManualProcess}
-              onChange={(e) => handleInputChange('confirmationManualProcess', e.target.checked)}
-              className="mt-1 h-4 w-4 text-green-400 bg-gray-800 border-gray-600 rounded focus:ring-green-400"
-              required
-            />
-            <span className="text-sm text-gray-300">
-              I understand this transaction is processed manually, may take a few hours, and the final stock price can vary slightly from the estimate. *
-            </span>
-          </label>
         </div>
 
         {/* Submit Button */}
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition-colors"
+          className="w-full font-medium py-3 rounded-lg transition-all duration-300"
+          style={{
+            background: isSubmitting 
+              ? 'linear-gradient(135deg, rgba(217, 255, 102, 0.6) 0%, rgba(184, 230, 46, 0.6) 100%)'
+              : 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
+            color: '#000000',
+            border: '1px solid rgba(217, 255, 102, 0.3)',
+            boxShadow: '0 4px 15px rgba(217, 255, 102, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+          }}
         >
           {isSubmitting ? (
             <div className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
               Submitting...
             </div>
           ) : (

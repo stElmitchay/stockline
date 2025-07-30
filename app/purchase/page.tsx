@@ -13,11 +13,18 @@ function PurchaseForm() {
   const { user, authenticated } = usePrivy();
   const [isSuccess, setIsSuccess] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [userAmount, setUserAmount] = useState('');
 
   // Stock information from URL params
   const stockSymbol = searchParams.get('symbol') || '';
   const stockName = searchParams.get('name') || '';
   const stockPrice = searchParams.get('price') || '';
+  
+  // Exchange rate and calculations
+  const USD_TO_SLL_RATE = 24.5;
+  const usdEquivalent = userAmount ? (parseFloat(userAmount) / USD_TO_SLL_RATE) : 0;
+  const stockPriceNum = parseFloat(stockPrice || '0') || 0;
+  const estimatedShares = stockPriceNum > 0 ? (usdEquivalent / stockPriceNum) : 0;
 
   // Get user data from Privy
   const userEmail = user?.email?.address || '';
@@ -72,7 +79,7 @@ function PurchaseForm() {
               </Link>
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-gray-100 mb-2">Purchase Stock</h1>
-                <p className="text-gray-400">Complete your investment with secure OTC transaction</p>
+                <p className="text-gray-400">Please fill out the form below to complete your purchase.</p>
               </div>
             </div>
 
@@ -93,33 +100,25 @@ function PurchaseForm() {
           </div>
         </div>
 
-        {/* Airtable Form Embed */}
+        {/* Stock Purchase Form */}
         <div className="max-w-4xl mx-auto mb-6">
-          <div className={`relative overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-2xl sticky top-24 z-10`}
-               style={{
-                 background: '#1A1A1A',
-                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-               }}>
-            <h2 className="text-xl font-semibold text-gray-100 mb-6">Purchase Form</h2>
-            <div className="relative">
-              <StockPurchaseForm
-                stockSymbol={stockSymbol || ''}
-                stockName={stockName || ''}
-                stockPrice={stockPrice || ''}
-                onSuccess={handleFormSuccess}
-              />
-            </div>
-          </div>
+          <StockPurchaseForm
+            stockSymbol={stockSymbol || ''}
+            stockName={stockName || ''}
+            stockPrice={stockPrice || ''}
+            onSuccess={handleFormSuccess}
+            onAmountChange={setUserAmount}
+          />
         </div>
 
         {/* Purchase Summary Card - Matching Stock Card Styling */}
         <div className="max-w-4xl mx-auto">
-          <div className={`relative overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-2xl`}
+          <div className={`relative overflow-hidden rounded-2xl p-6 transition-all duration-300`}
                style={{
-                 background: '#1A1A1A',
+                 background: 'rgba(46, 71, 68, 0.7)',
                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                 backdropFilter: 'blur(10px)'
                }}>
             
             {/* Content */}
@@ -158,9 +157,37 @@ function PurchaseForm() {
                   <span className="text-white font-medium">{stockSymbol || 'Stock'}</span>
                 </div>
                 
+                {userAmount && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#8C66FF' }}></div>
+                        <span className="text-gray-300 text-sm">Amount in Leones</span>
+                      </div>
+                      <span className="text-white font-medium">{parseFloat(userAmount).toLocaleString()} SLL</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#4CAF50' }}></div>
+                        <span className="text-gray-300 text-sm">USD Equivalent</span>
+                      </div>
+                      <span className="text-green-400 font-medium">${usdEquivalent.toFixed(2)} USD</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#D9FF66' }}></div>
+                        <span className="text-gray-300 text-sm">Estimated Shares</span>
+                      </div>
+                      <span className="text-yellow-400 font-bold">{estimatedShares.toFixed(4)} shares</span>
+                    </div>
+                  </>
+                )}
+                
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#D9FF66' }}></div>
+                    <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#FF6B6B' }}></div>
                     <span className="text-gray-300 text-sm">Will arrive in wallet</span>
                   </div>
                   <span className="text-white font-medium">1-2 hours</span>
