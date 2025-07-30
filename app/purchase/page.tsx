@@ -6,11 +6,13 @@ import { usePrivy } from "@privy-io/react-auth";
 import { ArrowLeft, CheckCircle, DollarSign, TrendingUp, Shield, Clock, User } from "lucide-react";
 import Link from "next/link";
 import Navigation from "@/components/navigation";
+import StockPurchaseForm from "@/components/stockPurchaseForm";
 
 function PurchaseForm() {
   const searchParams = useSearchParams();
   const { user, authenticated } = usePrivy();
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Stock information from URL params
   const stockSymbol = searchParams.get('symbol') || '';
@@ -24,52 +26,13 @@ function PurchaseForm() {
   );
   const walletAddress = (solanaWalletAccount as any)?.address || '';
 
-  // Build Airtable form URL with pre-filled parameters
-  const buildAirtableUrl = () => {
-    const baseUrl = "https://airtable.com/embed/appipJcYVv4Grvglt/pagDunsI0eAzPFYgE/form";
-    const params = new URLSearchParams();
-    
-    // Debug: Log the values we're trying to pre-fill
-    console.log('Debug - User data:', {
-      userEmail,
-      walletAddress,
-      stockSymbol,
-      user: user,
-      linkedAccounts: user?.linkedAccounts
-    });
-    
-    // Add pre-filled fields - trying multiple field name variations
-    if (userEmail) {
-      params.append('prefill_Email', userEmail);
-      // Try alternative field names for email
-      params.append('prefill_Email Address', userEmail);
-      params.append('prefill_EmailAddress', userEmail);
-    }
-    
-    if (walletAddress) {
-      // Try multiple variations for wallet address field
-      params.append('prefill_WalletAddress', walletAddress);
-      params.append('prefill_Wallet Address', walletAddress);
-      params.append('prefill_Wallet', walletAddress);
-      params.append('prefill_Address', walletAddress);
-      params.append('prefill_Solana Address', walletAddress);
-      params.append('prefill_SolanaAddress', walletAddress);
-    }
-    
-    if (stockSymbol) {
-      // Try multiple variations for stock ticker field
-      params.append('prefill_StockTicker', stockSymbol);
-      params.append('prefill_Stock Ticker', stockSymbol);
-      params.append('prefill_Ticker', stockSymbol);
-      params.append('prefill_Symbol', stockSymbol);
-      params.append('prefill_Stock Symbol', stockSymbol);
-      params.append('prefill_Stock', stockSymbol);
-    }
-    
-    const finalUrl = `${baseUrl}?${params.toString()}`;
-    console.log('Debug - Final Airtable URL:', finalUrl);
-    
-    return finalUrl;
+  const handleFormSuccess = () => {
+    setShowSuccessMessage(true);
+    // Auto-hide success message after 5 seconds
+    setTimeout(() => {
+      setShowSuccessMessage(false);
+      window.location.href = '/stocks';
+    }, 5000);
   };
 
   // Listen for form submission success
@@ -140,17 +103,11 @@ function PurchaseForm() {
                }}>
             <h2 className="text-xl font-semibold text-gray-100 mb-6">Purchase Form</h2>
             <div className="relative">
-              <iframe 
-                className="airtable-embed" 
-                src={buildAirtableUrl()} 
-                frameBorder="0" 
-                onWheel={() => {}} 
-                width="100%" 
-                height="533" 
-                style={{ 
-                  background: 'transparent', 
-                  border: '1px solid #ccc'
-                }}
+              <StockPurchaseForm
+                stockSymbol={stockSymbol || ''}
+                stockName={stockName || ''}
+                stockPrice={stockPrice || ''}
+                onSuccess={handleFormSuccess}
               />
             </div>
           </div>
