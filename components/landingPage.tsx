@@ -42,7 +42,6 @@ export function LandingPage() {
         <div className="flex items-center p-6">
           <div className="flex items-center gap-2">
             <Infinity className="h-6 w-6 text-white" />
-            <div className="w-3 h-3 bg-white rounded-full"></div>
           </div>
         </div>
 

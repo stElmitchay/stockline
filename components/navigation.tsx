@@ -17,7 +17,6 @@ export default function Navigation() {
           <Link href="/stocks" className="flex items-center space-x-2">
             <div className="flex items-center gap-3">
               <Infinity className="h-8 w-8 text-gray-100" />
-              <div className="w-3 h-3 bg-gray-100 rounded-full"></div>
             </div>
           </Link>
 
