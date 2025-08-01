@@ -9,6 +9,7 @@
 		"lint": "next lint"
 	},
 	"dependencies": {
+		"@metaplex-foundation/js": "^0.20.1",
 		"@metaplex-foundation/mpl-token-metadata": "^3.4.0",
 		"@privy-io/react-auth": "^2.16.0",
 		"@privy-io/server-auth": "^1.27.4",

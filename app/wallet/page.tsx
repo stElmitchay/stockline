@@ -4,11 +4,16 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useState, useEffect } from "react";
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, getMint } from "@solana/spl-token";
+import { Metaplex } from "@metaplex-foundation/js";
 import { ArrowLeft, ArrowDown, ArrowUp, Send, Copy, Check, Clock, TrendingUp, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "../../components/ui/badge";
 import { fetchTokenData, fetchMultipleTokensData } from "@/utils/solanaData";
+import stocksData from '@/data/stocks.json';
 import Navigation from "@/components/navigation";
+
+import { getAccount } from "@solana/spl-token";
+import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 
 interface WalletAccount {
 	address: string;
@@ -64,54 +69,126 @@ export default function WalletPage() {
 		walletIndex: (solanaWalletAccount as any).walletIndex,
 	} : null;
 
-	const fetchTokenMetadata = async (mint: string) => {
+	const fetchTokenMetadata = async (mint: string, connection: Connection) => {
 		try {
 			// Known tokens mapping for reliable identification
-			const knownTokens: { [key: string]: { symbol: string; name: string } } = {
-				'So11111111111111111111111111111111111111112': { symbol: 'SOL', name: 'Solana' },
-				'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': { symbol: 'USDC', name: 'USD Coin' },
-				'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': { symbol: 'USDT', name: 'Tether' },
-				'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp': { symbol: 'TSLAx', name: 'Tesla Stock Token' },
+			const knownTokens: { [key: string]: { symbol: string; name: string; logoURI?: string } } = {
+				'So11111111111111111111111111111111111111112': { 
+					symbol: 'SOL', 
+					name: 'Solana',
+					logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
+				},
+				'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': { 
+					symbol: 'USDC', 
+					name: 'USD Coin',
+					logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
+				},
+				'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': { 
+					symbol: 'USDT', 
+					name: 'Tether',
+					logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.png'
+				},
+				'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp': { 
+					symbol: 'TSLAx', 
+					name: 'Tesla Stock Token',
+					logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp/logo.png'
+				},
 			};
 			
 			// Check if it's a known token first
 			if (knownTokens[mint]) {
+				console.log(`Debug: Found known token for ${mint}:`, knownTokens[mint]);
+				return knownTokens[mint];
+			}
+
+			// Try to fetch from Solana token list API
+			try {
+				console.log(`Debug: Fetching from Solana token list for ${mint}`);
+				const response = await fetch(`https://cdn.jsdelivr.net/gh/solana-labs/token-list@main/src/tokens/solana.tokenlist.json`);
+				if (response.ok) {
+					const tokenList = await response.json();
+					const tokenInfo = tokenList.tokens.find((token: any) => token.address === mint);
+					if (tokenInfo) {
+						console.log(`Debug: Found token in Solana token list: ${tokenInfo.symbol}`);
+						return {
+							symbol: tokenInfo.symbol,
+							name: tokenInfo.name,
+							logoURI: tokenInfo.logoURI
+						};
+					}
+				}
+			} catch (tokenListError) {
+				console.warn(`Failed to fetch from Solana token list for ${mint}:`, tokenListError);
+			}
+
+			// Try Metaplex metadata
+			console.log(`Debug: Trying Metaplex for ${mint}`);
+			const metaplex = Metaplex.make(connection);
+			const mintPubkey = new PublicKey(mint);
+			const nft = await metaplex.nfts().findByMint({ mintAddress: mintPubkey });
+			if (nft && nft.name && nft.symbol) {
+				console.log(`Debug: Found Metaplex metadata for ${mint}:`, { name: nft.name, symbol: nft.symbol });
 				return {
-					symbol: knownTokens[mint].symbol,
-					name: knownTokens[mint].name,
-					logoURI: undefined
+					symbol: nft.symbol,
+					name: nft.name,
+					logoURI: nft.json?.image
 				};
 			}
-			
-			// Try to get metadata from Birdeye API
-			try {
-				const birdeyeData = await fetchTokenData(mint);
-				if (birdeyeData && birdeyeData.price > 0) {
-					// If we can get price data, the token likely has metadata
+		} catch (metadataError) {
+			console.warn(`Failed to fetch Metaplex metadata for ${mint}:`, metadataError);
+		}
+
+		// Try Jupiter API as fallback
+		try {
+			console.log(`Debug: Trying Jupiter API for ${mint}`);
+			const response = await fetch(`https://token.jup.ag/all`);
+			if (response.ok) {
+				const tokens = await response.json();
+				const tokenInfo = tokens.find((token: any) => token.address === mint);
+				if (tokenInfo) {
+					console.log(`Debug: Found token in Jupiter API: ${tokenInfo.symbol}`);
 					return {
-						symbol: mint.slice(0, 6) + '...',
-						name: 'Token',
-						logoURI: undefined
+						symbol: tokenInfo.symbol,
+						name: tokenInfo.name,
+						logoURI: tokenInfo.logoURI
 					};
 				}
-			} catch (birdeyeError) {
-				console.warn('Failed to fetch Birdeye data for metadata:', birdeyeError);
 			}
-			
-			// Final fallback
-			return { 
-				symbol: mint.slice(0, 6) + '...', 
-				name: 'Unknown Token',
-				logoURI: undefined
-			};
-		} catch (error) {
-			console.error('Error fetching token metadata:', error);
-			return { 
-				symbol: mint.slice(0, 6) + '...', 
-				name: 'Unknown Token',
-				logoURI: undefined
-			};
+		} catch (jupiterError) {
+			console.warn(`Failed to fetch from Jupiter API for ${mint}:`, jupiterError);
 		}
+
+		// Try Birdeye as last resort
+		try {
+			console.log(`Debug: Trying Birdeye for ${mint}`);
+			const response = await fetch(`https://public-api.birdeye.so/defi/token_overview?address=${mint}`, {
+				method: 'GET',
+				headers: {
+					'X-Chain': 'solana'
+				}
+			});
+			if (response.ok) {
+				const birdeyeData = await response.json();
+				if (birdeyeData.success && birdeyeData.data) {
+					console.log(`Debug: Found Birdeye metadata for ${mint}:`, birdeyeData.data);
+					return {
+						symbol: birdeyeData.data.symbol || mint.slice(0, 6) + '...',
+						name: birdeyeData.data.name || 'Unknown Token',
+						logoURI: birdeyeData.data.logoURI
+					};
+				}
+			}
+		} catch (birdeyeError) {
+			console.warn('Failed to fetch Birdeye data for metadata:', birdeyeError);
+		}
+
+		// If all else fails, return a generic name
+		console.log(`Debug: No metadata found for ${mint}, using generic name`);
+		return { 
+			symbol: mint.slice(0, 6) + '...', 
+			name: 'Unknown Token',
+			logoURI: undefined
+		};
 	};
 
 	const fetchDetailedTransaction = async (connection: Connection, signature: string, walletAddress: string): Promise<Transaction | null> => {
@@ -231,16 +308,18 @@ export default function WalletPage() {
 			setLoading(true);
 			setError(null);
 
-			const connection = new Connection(
-				process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string
-			);
-			const publicKey = new PublicKey(solanaWallet!.address);
+			const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+			console.log('Debug: Using RPC URL:', rpcUrl);  // Log the RPC URL for verification
 
-			// Test RPC connection
+			const connection = new Connection(rpcUrl as string);
+			const publicKey = new PublicKey(solanaWallet!.address);
+			console.log('Debug: Wallet Address:', publicKey.toString());
+
+			// Test RPC connection with version
 			console.log('Debug: Testing RPC connection...');
 			try {
-				const slot = await connection.getSlot();
-				console.log('Debug: RPC connection successful, current slot:', slot);
+				const version = await connection.getVersion();
+				console.log('Debug: RPC connection successful, version:', version);
 			} catch (rpcError) {
 				console.error('Debug: RPC connection failed:', rpcError);
 				throw new Error(`RPC connection failed: ${rpcError}`);
@@ -249,133 +328,136 @@ export default function WalletPage() {
 			// Fetch SOL balance
 			const solBalance = await connection.getBalance(publicKey);
 			setBalance(solBalance / LAMPORTS_PER_SOL);
+			console.log('Debug: SOL Balance:', solBalance / LAMPORTS_PER_SOL);
 
 			// Fetch token accounts with on-chain balance verification
 			console.log('Debug: About to fetch token accounts...');
 			console.log('Debug: Public key:', publicKey.toString());
 			console.log('Debug: TOKEN_PROGRAM_ID:', TOKEN_PROGRAM_ID.toString());
-			
-			let tokenAccounts;
-			let rawTokenAccounts;
-			
-			// Try multiple methods to fetch token accounts
-			try {
-				// Method 1: getParsedTokenAccountsByOwner
-				console.log('Debug: Trying getParsedTokenAccountsByOwner...');
-				tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-					publicKey,
-					{ programId: TOKEN_PROGRAM_ID }
-				);
-				console.log(`Method 1 found ${tokenAccounts.value.length} token accounts`);
-			} catch (error1) {
-				console.error('Debug: Method 1 failed:', error1);
-				tokenAccounts = { value: [] };
-			}
-			
-			try {
-				// Method 2: getTokenAccountsByOwner (raw)
-				console.log('Debug: Trying getTokenAccountsByOwner...');
-				rawTokenAccounts = await connection.getTokenAccountsByOwner(
-					publicKey,
-					{ programId: TOKEN_PROGRAM_ID }
-				);
-				console.log(`Method 2 found ${rawTokenAccounts.value.length} raw token accounts`);
-			} catch (error2) {
-				console.error('Debug: Method 2 failed:', error2);
-				rawTokenAccounts = { value: [] };
-			}
-			
-			// If both methods return 0, try with different commitment
-			if (tokenAccounts.value.length === 0 && rawTokenAccounts.value.length === 0) {
-				console.log('Debug: Both methods returned 0, trying with confirmed commitment...');
-				try {
-					const confirmedConnection = new Connection(
-						process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string,
-						'confirmed'
-					);
-					
-					const confirmedTokenAccounts = await confirmedConnection.getParsedTokenAccountsByOwner(
-						publicKey,
-						{ programId: TOKEN_PROGRAM_ID }
-					);
-					console.log(`Confirmed commitment found ${confirmedTokenAccounts.value.length} token accounts`);
-					
-					if (confirmedTokenAccounts.value.length > 0) {
-						tokenAccounts = confirmedTokenAccounts;
-					}
-				} catch (error3) {
-					console.error('Debug: Confirmed commitment method failed:', error3);
-				}
-			}
-			
-			// If still no accounts, try with finality commitment
-			if (tokenAccounts.value.length === 0 && rawTokenAccounts.value.length === 0) {
-				console.log('Debug: Still 0 accounts, trying with finalized commitment...');
-				try {
-					const finalizedConnection = new Connection(
-						process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string,
-						'finalized'
-					);
-					
-					const finalizedTokenAccounts = await finalizedConnection.getParsedTokenAccountsByOwner(
-						publicKey,
-						{ programId: TOKEN_PROGRAM_ID }
-					);
-					console.log(`Finalized commitment found ${finalizedTokenAccounts.value.length} token accounts`);
-					
-					if (finalizedTokenAccounts.value.length > 0) {
-						tokenAccounts = finalizedTokenAccounts;
-					}
-				} catch (error4) {
-					console.error('Debug: Finalized commitment method failed:', error4);
-				}
+			console.log('Debug: TOKEN_2022_PROGRAM_ID:', TOKEN_2022_PROGRAM_ID.toString());
+
+			interface TokenInfo {
+			  mint: string;
+			  tokenAmount: {
+			    amount: string;
+			    decimals: number;
+			    uiAmount: number;
+			    uiAmountString: string;
+			  };
 			}
 
-			console.log(`Final result: Found ${tokenAccounts.value.length} token accounts`);
-			console.log('Debug: Token accounts response:', tokenAccounts);
+			let tokenInfos: TokenInfo[] = [];
+			const programIds = [TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID];
 
-			// Debug: Log all token accounts first
-			console.log('Debug: All token accounts:');
-			tokenAccounts.value.forEach((account, index) => {
-				const parsedInfo = account.account.data.parsed.info;
-				console.log(`Account ${index}:`, {
-					mint: parsedInfo.mint,
-					uiAmount: parsedInfo.tokenAmount.uiAmount,
-					amount: parsedInfo.tokenAmount.amount,
-					decimals: parsedInfo.tokenAmount.decimals,
-					owner: parsedInfo.owner
-				});
-			});
+			for (const programId of programIds) {
+			  console.log(`Debug: Processing program: ${programId.toString()}`);
+			  let currentTokenAccounts;
+			  let currentRawAccounts;
 
+			  // Method 1: getParsedTokenAccountsByOwner
+			  try {
+			    console.log('Debug: Trying getParsedTokenAccountsByOwner...');
+			    currentTokenAccounts = await connection.getParsedTokenAccountsByOwner(
+			      publicKey,
+			      { programId }
+			    );
+			    console.log(`Method 1 found ${currentTokenAccounts.value.length} token accounts for ${programId.toString()}`);
+			  } catch (error1) {
+			    console.error('Debug: Method 1 failed:', error1);
+			    currentTokenAccounts = { value: [] };
+			  }
+
+			  // Method 2: getTokenAccountsByOwner (raw)
+			  try {
+			    console.log('Debug: Trying getTokenAccountsByOwner...');
+			    currentRawAccounts = await connection.getTokenAccountsByOwner(
+			      publicKey,
+			      { programId }
+			    );
+			    console.log(`Method 2 found ${currentRawAccounts.value.length} raw token accounts for ${programId.toString()}`);
+			  } catch (error2) {
+			    console.error('Debug: Method 2 failed:', error2);
+			    currentRawAccounts = { value: [] };
+			  }
+
+			  // Process parsed
+			  if (currentTokenAccounts.value.length > 0) {
+			    const parsedInfos = currentTokenAccounts.value.map(acc => acc.account.data.parsed.info as TokenInfo);
+			    tokenInfos = [...tokenInfos, ...parsedInfos];
+			  }
+
+			  // Process raw if needed
+			  if (currentTokenAccounts.value.length === 0 && currentRawAccounts.value.length > 0) {
+			    console.log('Debug: Processing raw token accounts...');
+			    for (const rawAccount of currentRawAccounts.value) {
+			      try {
+			        const accountInfo = await getAccount(connection, rawAccount.pubkey, undefined, programId);
+			        if (accountInfo.amount > 0) {
+			          const mintInfo = await getMint(connection, accountInfo.mint, undefined, programId);
+			          const decimals = mintInfo.decimals;
+			          const amountStr = accountInfo.amount.toString();
+			          const uiAmount = Number(accountInfo.amount) / Math.pow(10, decimals);
+			          const tokenAmount = {
+			            amount: amountStr,
+			            decimals,
+			            uiAmount,
+			            uiAmountString: uiAmount.toString()
+			          };
+			          const info: TokenInfo = {
+			            mint: accountInfo.mint.toString(),
+			            tokenAmount,
+			          };
+			          tokenInfos.push(info);
+			        }
+			      } catch (parseError) {
+			        console.error('Error parsing raw account:', parseError);
+			      }
+			    }
+			  }
+			}
+
+			// Remove duplicates by mint
+			let processedTokens = tokenInfos.filter((token, index, self) =>
+			  index === self.findIndex((t) => t.mint === token.mint)
+			);
+
+			console.log(`Final processed ${processedTokens.length} unique tokens`);
+
+			// Now create tokenData from processedTokens
 			const tokenData: TokenAccount[] = [];
-			
-			for (const account of tokenAccounts.value) {
-				const parsedInfo = account.account.data.parsed.info;
-				const balance = parsedInfo.tokenAmount.uiAmount || 0;
-				
-				console.log(`Processing token: ${parsedInfo.mint}, balance: ${balance}`);
-				
-				// Include ALL tokens found in the wallet
-				console.log(`  ✅ INCLUDING - Token found in wallet`);
-				
-				// Fetch metadata for this token
-				const metadata = await fetchTokenMetadata(parsedInfo.mint);
-				console.log(`  - Metadata:`, metadata);
-				
+			const stockMap = new Map(stocksData.xStocks.map(stock => [stock.solanaAddress, stock]));
+			for (const info of processedTokens) {
+				const balance = info.tokenAmount.uiAmount;
+				console.log(`Processing token: ${info.mint}, balance: ${balance}`);
+				let metadata = await fetchTokenMetadata(info.mint, connection);
+				console.log(`  - Initial Metadata:`, metadata);
+				const stockInfo = stockMap.get(info.mint);
+				if (stockInfo) {
+					metadata = {
+						symbol: stockInfo.symbol,
+						name: stockInfo.name,
+						logoURI: stockInfo.logoUrl
+					};
+					console.log(`  - Overridden with stocks.json:`, metadata);
+				}
 				tokenData.push({
-					mint: parsedInfo.mint,
+					mint: info.mint,
 					balance: balance,
-					decimals: parsedInfo.tokenAmount.decimals,
+					decimals: info.tokenAmount.decimals,
 					symbol: metadata.symbol,
 					name: metadata.name,
 					logoURI: metadata.logoURI
 				});
 			}
 
-			console.log(`Processed ${tokenData.length} tokens from wallet`);
+			console.log(`Final processed ${tokenData.length} tokens`);
 
 			// Fetch prices for all tokens
 			const tokenMints = tokenData.map(token => token.mint);
+			// Always include SOL mint for price
+			if (!tokenMints.includes('So11111111111111111111111111111111111111112')) {
+				tokenMints.push('So11111111111111111111111111111111111111112');
+			}
 			const tokenPrices = await fetchTokenPrices(tokenMints);
 
 			// Add prices to token data
@@ -407,7 +489,7 @@ export default function WalletPage() {
 			setTransactions(transactionData);
 		} catch (err) {
 			console.error("Error fetching wallet data:", err);
-			setError("Failed to fetch wallet data");
+			setError("Failed to fetch wallet data: " + (err as Error).message);
 		} finally {
 			setLoading(false);
 		}
@@ -555,26 +637,8 @@ export default function WalletPage() {
 							boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
 						}}>
 						<div className="relative z-10">
-							<div className="flex items-center justify-between mb-4">
-								<div className="flex items-center gap-2">
-									<span className="text-sm text-gray-400 uppercase tracking-wide">TOTAL PORTFOLIO VALUE</span>
-								</div>
-								<div className="flex items-center gap-2">
-									<div className="text-right">
-										<p className="text-xs text-gray-400 mb-1">Wallet Address</p>
-										<p className="font-mono text-xs text-gray-300">{formatAddress(solanaWallet.address)}</p>
-									</div>
-									<button
-										onClick={copyToClipboard}
-										className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-									>
-										{copied ? (
-											<Check className="h-4 w-4 text-green-500" />
-										) : (
-											<Copy className="h-4 w-4 text-gray-400" />
-										)}
-									</button>
-								</div>
+							<div className="mb-4">
+								<span className="text-sm text-gray-400 uppercase tracking-wide">TOTAL PORTFOLIO VALUE</span>
 							</div>
 							
 							{loading ? (
@@ -583,12 +647,7 @@ export default function WalletPage() {
 									<div className="h-4 bg-gray-700 rounded w-32"></div>
 								</div>
 							) : (
-								<>
-									<div className="text-5xl font-bold mb-2 text-white">${calculateTotalPortfolioValue().toFixed(2)}</div>
-									<div className="text-sm text-gray-400">
-										SOL: ${solPrice.toFixed(2)}
-									</div>
-								</>
+							<div className="text-5xl font-bold mb-2 text-white">${calculateTotalPortfolioValue().toFixed(2)}</div>
 							)}
 							
 							{/* Action Button */}
@@ -757,11 +816,32 @@ export default function WalletPage() {
 										</div>
 										<div className="text-right">
 											<p className="font-medium text-white">
-												{token.balance.toFixed(2)} {token.symbol || 'TOKENS'}
-											</p>
+											{(() => {
+												if (token.balance >= 1) {
+													return token.balance.toFixed(2);
+												} else if (token.balance >= 0.01) {
+													return token.balance.toFixed(4);
+												} else if (token.balance > 0) {
+													return token.balance.toFixed(6);
+												} else {
+													return '0';
+												}
+											})()} {token.symbol || 'TOKENS'}
+										</p>
 											<p className="text-sm text-gray-400">
 												{token.price && token.price > 0 
-													? `$${(token.balance * token.price).toFixed(2)}`
+													? (() => {
+														const value = token.balance * token.price;
+														if (value >= 1) {
+															return `$${value.toFixed(2)}`;
+														} else if (value >= 0.01) {
+															return `$${value.toFixed(4)}`;
+														} else if (value > 0) {
+															return `$${value.toFixed(6)}`;
+														} else {
+															return '$0.00';
+														}
+													})()
 													: 'Price unavailable'
 												}
 											</p>
