@@ -11,6 +11,7 @@ import { Badge } from "../../components/ui/badge";
 import { fetchTokenData, fetchMultipleTokensData } from "@/utils/solanaData";
 import stocksData from '@/data/stocks.json';
 import Navigation from "@/components/navigation";
+import { CashoutModal } from "@/components/modals/cashoutModal";
 
 import { getAccount } from "@solana/spl-token";
 import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
@@ -54,6 +55,7 @@ export default function WalletPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<'tokens' | 'history'>('tokens');
 	const [copied, setCopied] = useState(false);
+	const [showCashoutModal, setShowCashoutModal] = useState(false);
 
 	// Get the first Solana wallet
 	const solanaWalletAccount = user?.linkedAccounts?.find(
@@ -93,6 +95,12 @@ export default function WalletPage() {
 					name: 'Tesla Stock Token',
 					logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp/logo.png'
 				},
+				// Add fallback for problematic pump.fun token
+				'pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn': {
+					symbol: 'PUMP',
+					name: 'Pump Token',
+					logoURI: undefined
+				},
 			};
 			
 			// Check if it's a known token first
@@ -119,6 +127,7 @@ export default function WalletPage() {
 				}
 			} catch (tokenListError) {
 				console.warn(`Failed to fetch from Solana token list for ${mint}:`, tokenListError);
+				// Continue to next method, don't throw
 			}
 
 			// Try Metaplex metadata
@@ -653,11 +662,12 @@ export default function WalletPage() {
 							{/* Action Button */}
 							<div className="mt-6">
 								<button 
-									className="w-full bg-[#D9FF66] text-black rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors font-semibold hover:bg-[#B8E62E]"
-								>
-									<Send className="h-4 w-4" />
-									<span>Cash Out</span>
-								</button>
+							onClick={() => setShowCashoutModal(true)}
+							className="w-full bg-[#D9FF66] text-black rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors font-semibold hover:bg-[#B8E62E]"
+						>
+							<Send className="h-4 w-4" />
+							<span>Cash Out</span>
+						</button>
 							</div>
 						</div>
 					</div>
@@ -931,6 +941,14 @@ export default function WalletPage() {
 					)}
 				</div>
 			</div>
+
+			{/* Cashout Modal */}
+			<CashoutModal
+				isOpen={showCashoutModal}
+				onClose={() => setShowCashoutModal(false)}
+				userBalance={balance}
+				tokens={tokens}
+			/>
 		</div>
 	);
 }
