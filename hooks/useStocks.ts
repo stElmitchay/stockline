@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Stock, SortOption } from '@/types/stock';
 import stocksData from '@/data/stocks.json';
 import { API_CONFIG, DEFAULTS } from '@/constants';
-import { fetchMultipleTokensDataProgressive } from '@/utils/solanaData';
+import { fetchMultipleTokensDataProgressive, warmUpCache } from '@/utils/solanaData';
+import { prefetchWalletData } from '@/utils/walletPrefetch';
 
 export interface UseStocksReturn {
   stocks: Stock[];
@@ -26,7 +27,20 @@ export const useStocks = (): UseStocksReturn => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(DEFAULTS.SEARCH_QUERY);
   const [sortBy, setSortBy] = useState<SortOption>(DEFAULTS.SORT_BY);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  
+  // Check if stocks have been initialized in this session
+  const getSessionInitialized = () => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('stocks_initialized') === 'true';
+  };
+  
+  const setSessionInitialized = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('stocks_initialized', 'true');
+    }
+  };
+  
+  const [hasInitialized, setHasInitialized] = useState(getSessionInitialized);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalStocks: 0,
@@ -93,11 +107,40 @@ export const useStocks = (): UseStocksReturn => {
     fetchLiveData();
   };
 
-  // Only fetch on initial page load
+  // Only fetch on initial session load with cache warming
   useEffect(() => {
     if (!hasInitialized) {
-      console.log('Initial page load - fetching stock data with progressive loading');
+      
       setHasInitialized(true);
+      setSessionInitialized();
+      
+      // First, try to warm up cache with all token addresses
+      const tokenAddresses = xStocksData.map(stock => stock.solanaAddress);
+      warmUpCache(tokenAddresses).then(() => {
+        // Prefetch wallet data in the background if user has a Solana wallet
+        if (typeof window !== 'undefined') {
+          const privyUser = JSON.parse(localStorage.getItem('privy:user') || '{}');
+          const solanaWallet = privyUser?.linkedAccounts?.find(
+            (account: any) => account.type === 'wallet' && account.chainType === 'solana'
+          );
+          if (solanaWallet?.address) {
+            // Start wallet prefetching in the background (non-blocking)
+            prefetchWalletData(solanaWallet.address).catch(() => {
+              // Silently handle any prefetch errors
+            });
+          }
+        }
+        
+        // Then fetch live data (which will use cached data where available)
+        fetchLiveData();
+      }).catch(() => {
+        // If cache warming fails, still proceed with live data fetch
+        fetchLiveData();
+      });
+    } else {
+      // If already initialized in this session, just use cached data
+      
+      // Still fetch to update UI with any cached data, but won't trigger API calls if cache is fresh
       fetchLiveData();
     }
   }, [hasInitialized]);

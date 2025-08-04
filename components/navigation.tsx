@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
+
 import { Wallet, LogIn, User, Infinity } from "lucide-react";
 
 export default function Navigation() {
@@ -25,7 +26,7 @@ export default function Navigation() {
             {/* Navigation links can be added here in the future if needed */}
           </div>
 
-          {/* Auth Buttons */}
+          {/* Cache Status and Auth Buttons */}
           <div className="flex items-center space-x-3">
             {authenticated && (
               <Link href="/wallet">

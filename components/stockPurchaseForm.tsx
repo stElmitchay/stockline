@@ -335,6 +335,7 @@ export default function StockPurchaseForm({
       submitData.append('confirmation1', formData.confirmation1.toString());
       submitData.append('confirmation2', formData.confirmation2.toString());
       submitData.append('confirmationManualProcess', formData.confirmationManualProcess.toString());
+      submitData.append('transactionType', 'CashIn'); // Automatically set to CashIn for purchases
       if (formData.paymentReceipt) {
         submitData.append('paymentReceipt', formData.paymentReceipt);
       }

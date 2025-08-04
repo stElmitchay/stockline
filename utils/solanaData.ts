@@ -16,12 +16,106 @@ interface CachedTokenData {
   timestamp: number;
 }
 
-// Cache for token prices (1 minute cache)
+// Enhanced cache for token prices with localStorage persistence
 const tokenPriceCache = new Map<string, CachedTokenData>();
 
 // Smart cache tracking
 const tokenAccessCount = new Map<string, number>();
 const tokenLastAccess = new Map<string, number>();
+
+// Cache configuration - optimized for browsing sessions
+const CACHE_CONFIG = {
+  DEFAULT_TTL: 15 * 60 * 1000, // 15 minutes default for session-based caching
+  POPULAR_TOKEN_TTL: 10 * 60 * 1000, // 10 minutes for popular tokens
+  UNPOPULAR_TOKEN_TTL: 30 * 60 * 1000, // 30 minutes for unpopular tokens
+  STORAGE_KEY: 'solana_token_cache',
+  ACCESS_COUNT_KEY: 'solana_token_access_count',
+  LAST_ACCESS_KEY: 'solana_token_last_access'
+};
+
+// Initialize cache from localStorage on startup
+function initializeCacheFromStorage() {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    // Load cached token data
+    const cachedData = localStorage.getItem(CACHE_CONFIG.STORAGE_KEY);
+    if (cachedData) {
+      const parsed = JSON.parse(cachedData);
+      Object.entries(parsed).forEach(([address, data]: [string, any]) => {
+        tokenPriceCache.set(address, data);
+      });
+      console.log(`Loaded ${tokenPriceCache.size} cached tokens from localStorage`);
+    }
+    
+    // Load access count data
+    const accessCountData = localStorage.getItem(CACHE_CONFIG.ACCESS_COUNT_KEY);
+    if (accessCountData) {
+      const parsed = JSON.parse(accessCountData);
+      Object.entries(parsed).forEach(([address, count]: [string, any]) => {
+        tokenAccessCount.set(address, count);
+      });
+    }
+    
+    // Load last access data
+    const lastAccessData = localStorage.getItem(CACHE_CONFIG.LAST_ACCESS_KEY);
+    if (lastAccessData) {
+      const parsed = JSON.parse(lastAccessData);
+      Object.entries(parsed).forEach(([address, timestamp]: [string, any]) => {
+        tokenLastAccess.set(address, timestamp);
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to load cache from localStorage:', error);
+  }
+}
+
+// Save cache to localStorage
+function saveCacheToStorage() {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    // Save token data
+    const cacheData = Object.fromEntries(tokenPriceCache.entries());
+    localStorage.setItem(CACHE_CONFIG.STORAGE_KEY, JSON.stringify(cacheData));
+    
+    // Save access count data
+    const accessCountData = Object.fromEntries(tokenAccessCount.entries());
+    localStorage.setItem(CACHE_CONFIG.ACCESS_COUNT_KEY, JSON.stringify(accessCountData));
+    
+    // Save last access data
+    const lastAccessData = Object.fromEntries(tokenLastAccess.entries());
+    localStorage.setItem(CACHE_CONFIG.LAST_ACCESS_KEY, JSON.stringify(lastAccessData));
+  } catch (error) {
+    console.warn('Failed to save cache to localStorage:', error);
+  }
+}
+
+// Clean expired entries from cache
+function cleanExpiredCache() {
+  const now = Date.now();
+  let cleanedCount = 0;
+  
+  for (const [address, data] of tokenPriceCache.entries()) {
+    if (shouldInvalidateCache(address)) {
+      tokenPriceCache.delete(address);
+      cleanedCount++;
+    }
+  }
+  
+  if (cleanedCount > 0) {
+    console.log(`Cleaned ${cleanedCount} expired cache entries`);
+    saveCacheToStorage();
+  }
+}
+
+// Initialize cache on module load
+initializeCacheFromStorage();
+
+// Clean expired cache every 2 minutes
+if (typeof window !== 'undefined') {
+  setInterval(cleanExpiredCache, 2 * 60 * 1000);
+}
 
 // Rate limiting with exponential backoff
 let lastBirdeyeCall = 0;
@@ -29,24 +123,30 @@ const BIRDEYE_RATE_LIMIT = 3000; // 3 seconds between calls (very conservative)
 let consecutiveFailures = 0;
 const MAX_CONSECUTIVE_FAILURES = 3;
 
-// Smart cache invalidation based on popularity
+// Smart cache invalidation based on popularity and timestamp
 function shouldInvalidateCache(tokenAddress: string): boolean {
   const now = Date.now();
+  const cacheEntry = tokenPriceCache.get(tokenAddress);
   const accessCount = tokenAccessCount.get(tokenAddress) || 0;
-  const lastAccess = tokenLastAccess.get(tokenAddress) || 0;
+  
+  if (!cacheEntry) {
+    return true; // No cache entry, needs refresh
+  }
+  
+  const age = now - cacheEntry.timestamp;
   
   // If token is frequently accessed, refresh more often
   if (accessCount > 10) {
-    return (now - lastAccess) > (5 * 60 * 1000); // 5 minutes for popular tokens
+    return age > CACHE_CONFIG.POPULAR_TOKEN_TTL;
   }
   
   // If token is rarely accessed, use longer cache
   if (accessCount < 3) {
-    return (now - lastAccess) > (15 * 60 * 1000); // 15 minutes for unpopular tokens
+    return age > CACHE_CONFIG.UNPOPULAR_TOKEN_TTL;
   }
   
-  // Default: 8 minutes for average tokens
-  return (now - lastAccess) > (8 * 60 * 1000);
+  // Default TTL for average tokens
+  return age > CACHE_CONFIG.DEFAULT_TTL;
 }
 
 // Track token access when requested
@@ -54,6 +154,11 @@ function trackTokenAccess(tokenAddress: string) {
   const currentCount = tokenAccessCount.get(tokenAddress) || 0;
   tokenAccessCount.set(tokenAddress, currentCount + 1);
   tokenLastAccess.set(tokenAddress, Date.now());
+  
+  // Save access tracking to localStorage periodically
+  if (currentCount % 5 === 0) { // Save every 5 accesses to reduce localStorage writes
+    saveCacheToStorage();
+  }
 }
 
 /**
@@ -182,6 +287,9 @@ export async function fetchTokenData(tokenAddress: string) {
           timestamp: now
         });
         
+        // Save to localStorage
+        saveCacheToStorage();
+        
         return tokenData;
       }
     }
@@ -200,6 +308,9 @@ export async function fetchTokenData(tokenAddress: string) {
       ...fallbackData,
       timestamp: now
     });
+    
+    // Save to localStorage
+    saveCacheToStorage();
     
     return fallbackData;
   } catch (error) {
@@ -353,6 +464,9 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
       }
     }
     
+    // Save cache to localStorage after batch processing
+    saveCacheToStorage();
+    
     return dataMap;
   } catch (error) {
     console.error('Error fetching multiple token data:', error);
@@ -382,15 +496,16 @@ export async function fetchMultipleTokensDataProgressive(
     
     console.log(`🚀 Starting progressive loading for ${validAddresses.length} tokens`);
     
-    // Check cache first
+    // Check cache first using proper cache invalidation logic
     const now = Date.now();
     const tokensToFetch: string[] = [];
     const dataMap = new Map();
     
     validAddresses.forEach(address => {
       const cacheEntry = tokenPriceCache.get(address);
-      if (cacheEntry && (now - cacheEntry.timestamp < 60000)) {
+      if (cacheEntry && !shouldInvalidateCache(address)) {
         console.log(`📦 Using cached data for ${address}`);
+        trackTokenAccess(address); // Track access for cache management
         dataMap.set(address, {
           price: cacheEntry.price,
           marketCap: cacheEntry.marketCap,
@@ -398,6 +513,7 @@ export async function fetchMultipleTokensDataProgressive(
           change24h: cacheEntry.change24h
         });
       } else {
+        console.log(`🔄 Cache miss or expired for ${address}`);
         tokensToFetch.push(address);
       }
     });
@@ -462,6 +578,7 @@ export async function fetchMultipleTokensDataProgressive(
                   };
                   
                   tokenPriceCache.set(address, { ...tokenData, timestamp: now });
+                  trackTokenAccess(address); // Track access for cache management
                   dataMap.set(address, tokenData);
                   successfulTokens++;
                   console.log(`✅ Success: ${address} - $${price.toFixed(4)}`);
@@ -494,6 +611,9 @@ export async function fetchMultipleTokensDataProgressive(
             }
             
             batchSuccess = true;
+            
+            // Save cache to localStorage after each batch
+            saveCacheToStorage();
             
             // Update UI with the new batch data
             console.log(`🔄 Updating UI with batch ${batchIndex + 1} data (${successfulTokens}/${batch.length} successful)`);
@@ -602,7 +722,31 @@ function updateStocksWithLiveData(tokenDataMap: Map<string, any>) {
  */
 export function clearPriceCache(): void {
   tokenPriceCache.clear();
-  console.log('Price cache cleared');
+  tokenAccessCount.clear();
+  tokenLastAccess.clear();
+  
+  // Clear localStorage as well
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(CACHE_CONFIG.STORAGE_KEY);
+    localStorage.removeItem(CACHE_CONFIG.ACCESS_COUNT_KEY);
+    localStorage.removeItem(CACHE_CONFIG.LAST_ACCESS_KEY);
+    // Clear session-based cache tracking
+    sessionStorage.removeItem('cache_warmed_session');
+    sessionStorage.removeItem('stocks_initialized');
+  }
+  
+  console.log('Price cache and session data cleared');
+}
+
+/**
+ * Function to reset session-based cache tracking
+ */
+export function resetSessionCache(): void {
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('cache_warmed_session');
+    sessionStorage.removeItem('stocks_initialized');
+    console.log('Session cache tracking reset');
+  }
 }
 
 /**
@@ -617,4 +761,65 @@ export function getCacheStats() {
       age: Date.now() - data.timestamp
     }))
   };
+}
+
+/**
+ * Warm up cache with commonly used tokens
+ * This can be called on app initialization to preload popular tokens
+ */
+export async function warmUpCache(tokenAddresses: string[]) {
+  if (!tokenAddresses || tokenAddresses.length === 0) {
+    return;
+  }
+  
+  // Check if cache warming was already done in this session
+  const sessionKey = 'cache_warmed_session';
+  if (typeof window !== 'undefined') {
+    const lastWarmed = sessionStorage.getItem(sessionKey);
+    if (lastWarmed) {
+      const timeSinceWarmed = Date.now() - parseInt(lastWarmed);
+      // Only warm cache again if it's been more than 10 minutes since last warming
+      if (timeSinceWarmed < 10 * 60 * 1000) {
+        console.log('🔥 Cache already warmed in this session, skipping');
+        return;
+      }
+    }
+  }
+  
+  console.log(`🔥 Warming up cache for ${tokenAddresses.length} tokens`);
+  
+  // Filter out tokens that already have fresh cache entries (less than 5 minutes old for session-based caching)
+  const now = Date.now();
+  const tokensToFetch = tokenAddresses.filter(address => {
+    const cached = tokenPriceCache.get(address);
+    if (!cached) return true;
+    
+    const age = now - cached.timestamp;
+    return age > (5 * 60 * 1000); // Only fetch if older than 5 minutes
+  });
+  
+  if (tokensToFetch.length === 0) {
+    console.log('✅ All tokens have fresh cache entries');
+    // Mark session as warmed even if no fetching was needed
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(sessionKey, now.toString());
+    }
+    return;
+  }
+  
+  console.log(`📡 Fetching ${tokensToFetch.length} tokens that need cache refresh`);
+  
+  try {
+    // Use batch fetching for efficiency
+    await fetchMultipleTokensData(tokensToFetch);
+    console.log(`✅ Cache warming completed for ${tokensToFetch.length} tokens`);
+    
+    // Mark session as warmed
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(sessionKey, now.toString());
+    }
+  } catch (error) {
+    console.error('❌ Cache warming failed:', error);
+    throw error;
+  }
 }

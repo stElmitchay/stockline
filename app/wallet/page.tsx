@@ -8,7 +8,8 @@ import { Metaplex } from "@metaplex-foundation/js";
 import { ArrowLeft, ArrowDown, ArrowUp, Send, Copy, Check, Clock, TrendingUp, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "../../components/ui/badge";
-import { fetchTokenData, fetchMultipleTokensData } from "@/utils/solanaData";
+import { fetchTokenData, fetchMultipleTokensData, warmUpCache } from "@/utils/solanaData";
+import { getCachedWalletData } from "@/utils/walletPrefetch";
 import stocksData from '@/data/stocks.json';
 import Navigation from "@/components/navigation";
 import { CashoutModal } from "@/components/modals/cashoutModal";
@@ -280,6 +281,10 @@ export default function WalletPage() {
 
 	const fetchTokenPrices = async (tokenMints: string[]) => {
 		try {
+			// Warm up cache for all tokens we need (including SOL)
+			const allTokens = ['So11111111111111111111111111111111111111112', ...tokenMints];
+			await warmUpCache(allTokens);
+
 			// Fetch SOL price using centralized function
 			const solData = await fetchTokenData('So11111111111111111111111111111111111111112');
 			const currentSolPrice = solData?.price || 0;
@@ -309,6 +314,68 @@ export default function WalletPage() {
 		} catch (error) {
 			console.error('Error fetching token prices:', error);
 			return {};
+		}
+	};
+
+	const fetchWalletDataCached = async () => {
+		try {
+			setLoading(true);
+			setError(null);
+
+			// Try to get cached data first using the utility function
+			const cachedData = getCachedWalletData(solanaWallet!.address);
+			console.log('🔍 Checking for cached wallet data:', {
+				address: solanaWallet!.address,
+				hasCachedData: !!cachedData,
+				cacheAge: cachedData ? (Date.now() - cachedData.timestamp) / 1000 : 'N/A'
+			});
+			
+			if (cachedData) {
+				console.log('✅ Using cached wallet data:', cachedData);
+				// Use cached data but fetch fresh SOL balance
+				const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+				const connection = new Connection(rpcUrl as string);
+				const publicKey = new PublicKey(solanaWallet!.address);
+				
+				try {
+					const solBalance = await connection.getBalance(publicKey);
+					setBalance(solBalance / LAMPORTS_PER_SOL);
+				} catch (balanceError) {
+					// Use cached balance if fresh fetch fails
+					setBalance(cachedData.balance);
+				}
+				
+				// Update token prices from cache or fetch fresh
+				const tokenMints = cachedData.tokens.map(token => token.mint);
+				if (!tokenMints.includes('So11111111111111111111111111111111111111112')) {
+					tokenMints.push('So11111111111111111111111111111111111111112');
+				}
+				
+				try {
+					const tokenPrices = await fetchTokenPrices(tokenMints);
+					const tokensWithUpdatedPrices = cachedData.tokens.map(token => ({
+						...token,
+						price: tokenPrices[token.mint] || token.price || 0
+					}));
+					setTokens(tokensWithUpdatedPrices);
+				} catch (priceError) {
+					// Use cached prices if fresh fetch fails
+					setTokens(cachedData.tokens);
+				}
+				
+				// For transactions, we'll skip them in cached mode to make it faster
+				// They will be loaded when the user does a full refresh
+				setTransactions([]);
+				setLoading(false);
+				return;
+			}
+			
+			// If no valid cache, fall back to full fetch
+			await fetchWalletData();
+		} catch (error) {
+			console.error('Error in fetchWalletDataCached:', error);
+			// Fall back to regular fetch on any error
+			await fetchWalletData();
 		}
 	};
 
@@ -496,6 +563,17 @@ export default function WalletPage() {
 
 			console.log('Processed transaction data:', transactionData);
 			setTransactions(transactionData);
+
+			// Cache the wallet data for future use
+			if (typeof window !== 'undefined') {
+				const walletCacheData = {
+					balance: balance,
+					tokens: tokensWithPrices,
+					transactions: transactionData,
+					timestamp: Date.now()
+				};
+				localStorage.setItem(`wallet_cache_${solanaWallet!.address}`, JSON.stringify(walletCacheData));
+			}
 		} catch (err) {
 			console.error("Error fetching wallet data:", err);
 			setError("Failed to fetch wallet data: " + (err as Error).message);
@@ -505,10 +583,11 @@ export default function WalletPage() {
 	};
 
 	useEffect(() => {
-		if (solanaWallet?.address) {
-			fetchWalletData();
-		}
-	}, [solanaWallet?.address]);
+    if (solanaWallet?.address) {
+      // Always try cache-first approach to utilize prefetched data
+      fetchWalletDataCached();
+    }
+  }, [solanaWallet?.address]);
 
 	if (!authenticated || !user) {
 		return (

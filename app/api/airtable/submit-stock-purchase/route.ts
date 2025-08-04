@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
     const confirmation1 = formData.get('confirmation1') === 'true';
     const confirmation2 = formData.get('confirmation2') === 'true';
     const confirmationManualProcess = formData.get('confirmationManualProcess') === 'true';
+    const transactionType = formData.get('transactionType') as string || 'CashIn'; // Default to CashIn for purchases
 
     // Validate required fields
     if (!email || !mobileNumber || !amountInLeones || !stockTicker || !walletAddress) {
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
       'Confirmation 2': confirmation2,
       'this transaction is process manually, may take a few hours, and the final stock price can vary slightly from the estimate.': confirmationManualProcess,
       'Status': 'Todo', // Set default status to match Airtable options
+      'Transaction Type': transactionType, // Add transaction type field
     };
 
     // Handle file upload if present

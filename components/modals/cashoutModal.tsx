@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Modal } from "../ui/modal";
 import { useSolanaWallets, useSignTransaction } from "@privy-io/react-auth/solana";
+import { usePrivy } from "@privy-io/react-auth";
 import {
   TransactionMessage,
   PublicKey,
@@ -54,8 +55,20 @@ export function CashoutModal({
   const [selectedToken, setSelectedToken] = useState<TokenAccount | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [pendingCashoutData, setPendingCashoutData] = useState<any>(null);
   const { wallets } = useSolanaWallets();
   const { signTransaction } = useSignTransaction();
+  const { user } = usePrivy();
+
+  // Auto-fill email from Privy user data
+  useEffect(() => {
+    if (user?.email?.address) {
+      setEmail(user.email.address);
+    }
+  }, [user]);
 
   // Create SOL token entry
   const solToken: TokenAccount = useMemo(() => ({
@@ -79,17 +92,68 @@ export function CashoutModal({
 
   const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
 
-  const handleCashout = async () => {
+  const handleFormSubmit = async () => {
     if (!embeddedWallet || !amount || !selectedToken) return;
 
     setLoading(true);
     setError(null);
 
     try {
+      // Validate required fields
+      if (!email || !mobileNumber) {
+        throw new Error("Please fill in email and mobile number");
+      }
+
       const amountValue = parseFloat(amount);
       if (amountValue <= 0 || amountValue > selectedToken.balance) {
         throw new Error("Invalid amount");
       }
+
+      // Submit to Airtable for initial record
+      const response = await fetch('/api/airtable/submit-cashout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          mobileNumber,
+          amount: amountValue,
+          tokenSymbol: selectedToken.symbol,
+          walletAddress: embeddedWallet.address
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit cashout request');
+      }
+
+      // Store the cashout data for later transaction
+      setPendingCashoutData({
+        amount: amountValue,
+        selectedToken,
+        email,
+        mobileNumber
+      });
+
+      setFormSubmitted(true);
+      alert('Cashout request submitted! We will contact you to confirm the transaction.');
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit cashout request');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompleteTransaction = async () => {
+    if (!embeddedWallet || !pendingCashoutData) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { amount: amountValue, selectedToken } = pendingCashoutData;
 
       // Create connection with fallback to more reliable RPC
       const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://mainnet.helius-rpc.com/?api-key=demo';
@@ -214,8 +278,30 @@ export function CashoutModal({
 
           const result = await response.json();
           
+          // Update Airtable record with transaction hash
+      try {
+        await fetch('/api/airtable/update-cashout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: pendingCashoutData.email,
+            walletAddress: embeddedWallet.address,
+            transactionHash: result.transactionHash
+          })
+        });
+      } catch (airtableError) {
+        console.error('Failed to update Airtable record:', airtableError);
+        // Don't fail the entire process if Airtable update fails
+      }
+          
           // Handle success for multi-instruction transaction
            setAmount('');
+           setEmail('');
+           setMobileNumber('');
+           setFormSubmitted(false);
+           setPendingCashoutData(null);
            setLoading(false);
            setError('');
           
@@ -289,8 +375,30 @@ export function CashoutModal({
       const { transactionHash } = await response.json();
       console.log('Cashout successful:', transactionHash);
       
+      // Update Airtable record with transaction hash
+      try {
+        await fetch('/api/airtable/update-cashout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: pendingCashoutData.email,
+            walletAddress: embeddedWallet.address,
+            transactionHash
+          })
+        });
+      } catch (airtableError) {
+        console.error('Failed to update Airtable record:', airtableError);
+        // Don't fail the entire process if Airtable update fails
+      }
+      
       // Reset form and close modal
       setAmount("");
+      setEmail("");
+      setMobileNumber("");
+      setFormSubmitted(false);
+      setPendingCashoutData(null);
       onClose();
       
     } catch (err) {
@@ -304,10 +412,45 @@ export function CashoutModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Cash Out"
-      description="Transfer your tokens to our wallet for processing"
+      title={formSubmitted ? "Complete Transaction" : "Cash Out"}
+      description={formSubmitted ? "Complete your cashout transaction" : "Submit your cashout request"}
     >
       <div className="space-y-4">
+        {formSubmitted && pendingCashoutData && (
+          <div className="p-4 bg-green-900/50 border border-green-500 rounded-lg">
+            <h3 className="text-green-400 font-semibold mb-2">Request Submitted</h3>
+            <p className="text-green-300 text-sm mb-2">
+              Your cashout request has been submitted and confirmed. Complete the transaction below.
+            </p>
+            <div className="text-sm text-green-200">
+              <p>Amount: {pendingCashoutData.amount} {pendingCashoutData.selectedToken.symbol}</p>
+              <p>Email: {pendingCashoutData.email}</p>
+            </div>
+          </div>
+        )}
+        
+        {!formSubmitted && (
+          <>
+            {/* Email Field */}
+            <Input
+              label="Email Address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email address"
+              required
+            />
+            
+            {/* Mobile Number Field */}
+            <Input
+              label="Mobile Number"
+              type="tel"
+              value={mobileNumber}
+              onChange={(e) => setMobileNumber(e.target.value)}
+              placeholder="Enter your mobile number"
+              required
+            />
+        
         {/* Token Selector */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -390,13 +533,37 @@ export function CashoutModal({
           </div>
         )}
 
-        <Button
-          onClick={handleCashout}
-          disabled={!embeddedWallet || !amount || !selectedToken || loading || parseFloat(amount) <= 0 || parseFloat(amount) > (selectedToken?.balance || 0)}
-          className="w-full"
-        >
-          {loading ? 'Processing...' : `Cash Out ${selectedToken?.symbol || 'Token'}`}
-        </Button>
+            <Button
+              onClick={handleFormSubmit}
+              disabled={!embeddedWallet || !amount || !selectedToken || !email || !mobileNumber || loading || parseFloat(amount) <= 0 || parseFloat(amount) > (selectedToken?.balance || 0)}
+              className="w-full"
+            >
+              {loading ? 'Submitting...' : `Submit Cashout Request`}
+            </Button>
+          </>
+        )}
+        
+        {formSubmitted && pendingCashoutData && (
+          <>
+            <div className="p-3 bg-gray-800 rounded-lg">
+              <p className="text-sm text-gray-400">Transaction Details:</p>
+              <p className="text-white font-semibold">
+                {pendingCashoutData.amount} {pendingCashoutData.selectedToken.symbol}
+              </p>
+              <p className="text-sm text-gray-400 mt-1">
+                To: Company Wallet
+              </p>
+            </div>
+            
+            <Button
+              onClick={handleCompleteTransaction}
+              disabled={!embeddedWallet || loading}
+              className="w-full"
+            >
+              {loading ? 'Processing Transaction...' : 'Complete Transaction'}
+            </Button>
+          </>
+        )}
         
         <p className="text-xs text-gray-500 text-center">
           Gas fees will be sponsored by our platform
