@@ -662,36 +662,32 @@ export async function fetchMultipleTokensDataProgressive(
                     change24h: change24h ? Number(change24h.toFixed(2)) : Number(((Math.random() - 0.5) * 10).toFixed(2))
                   };
                   
-                  tokenPriceCache.set(address, { ...tokenData, timestamp: now });
+                  tokenPriceCache.set(address, { ...tokenData, timestamp: now, isAccurate: true });
                   trackTokenAccess(address); // Track access for cache management
                   dataMap.set(address, tokenData);
                   successfulTokens++;
                   console.log(`✅ Success: ${address} - $${price.toFixed(4)}`);
                 } else {
-                  // Fallback data for tokens without valid prices
-                  const fallbackData = {
-                    price: 0.01,
-                    marketCap: 10000000,
-                    volume24h: 100000,
+                  // Mark as failed fetch for tokens without valid prices
+                  markFetchAsFailed(address);
+                  dataMap.set(address, {
+                    price: 0,
+                    marketCap: 0,
+                    volume24h: 0,
                     change24h: 0
-                  };
-                  
-                  tokenPriceCache.set(address, { ...fallbackData, timestamp: now });
-                  dataMap.set(address, fallbackData);
-                  console.log(`⚠️ Fallback: ${address} - No valid price`);
+                  });
+                  console.log(`⚠️ Failed: ${address} - No valid price`);
                 }
               } else {
-                // Fallback data for tokens not in response
-                const fallbackData = {
-                  price: 0.01,
-                  marketCap: 10000000,
-                  volume24h: 100000,
+                // Mark as failed fetch for tokens not in response
+                markFetchAsFailed(address);
+                dataMap.set(address, {
+                  price: 0,
+                  marketCap: 0,
+                  volume24h: 0,
                   change24h: 0
-                };
-                
-                tokenPriceCache.set(address, { ...fallbackData, timestamp: now });
-                dataMap.set(address, fallbackData);
-                console.log(`⚠️ Fallback: ${address} - Not in response`);
+                });
+                console.log(`⚠️ Failed: ${address} - Not in response`);
               }
             }
             
@@ -727,10 +723,11 @@ export async function fetchMultipleTokensDataProgressive(
                   dataMap.set(address, data);
                 } catch (individualError) {
                   console.error(`❌ Failed to fetch ${address}:`, individualError);
+                  markFetchAsFailed(address);
                   dataMap.set(address, {
-                    price: 0.01,
-                    marketCap: 10000000,
-                    volume24h: 100000,
+                    price: 0,
+                    marketCap: 0,
+                    volume24h: 0,
                     change24h: 0
                   });
                 }
