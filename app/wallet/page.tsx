@@ -54,7 +54,7 @@ export default function WalletPage() {
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [activeTab, setActiveTab] = useState<'tokens' | 'history'>('tokens');
+
 	const [copied, setCopied] = useState(false);
 	const [showCashoutModal, setShowCashoutModal] = useState(false);
 
@@ -752,44 +752,7 @@ export default function WalletPage() {
 					</div>
 				</div>
 
-				{/* Tab Navigation */}
-				<div className="max-w-4xl mx-auto mb-6">
-					<div className="flex rounded-lg p-1"
-						style={{
-							background: '#1A1A1A',
-							border: '1px solid rgba(255, 255, 255, 0.1)',
-							boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-						}}>
-						<button
-							onClick={() => setActiveTab('tokens')}
-							className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-								activeTab === 'tokens'
-									? 'bg-[#D9FF66] text-black'
-									: 'text-gray-400 hover:text-white'
-							}`}
-							style={activeTab !== 'tokens' ? {
-								backgroundColor: 'rgba(255, 255, 255, 0.1)',
-								border: '1px solid rgba(255, 255, 255, 0.2)'
-							} : {}}
-						>
-							Tokens
-						</button>
-						<button
-							onClick={() => setActiveTab('history')}
-							className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-								activeTab === 'history'
-									? 'bg-[#D9FF66] text-black'
-									: 'text-gray-400 hover:text-white'
-							}`}
-							style={activeTab !== 'history' ? {
-								backgroundColor: 'rgba(255, 255, 255, 0.1)',
-								border: '1px solid rgba(255, 255, 255, 0.2)'
-							} : {}}
-						>
-							History
-						</button>
-					</div>
-				</div>
+
 
 				{/* Content Area */}
 				<div className="max-w-4xl mx-auto">
@@ -835,7 +798,7 @@ export default function WalletPage() {
 								Retry
 							</button>
 						</div>
-					) : activeTab === 'tokens' ? (
+					) : (
 						<div className="space-y-4">
 							{/* SOL Balance */}
 							<div className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
@@ -939,83 +902,6 @@ export default function WalletPage() {
 								</div>
 							))
 							) : null}
-						</div>
-					) : (
-						<div className="space-y-4">
-							{transactions.length > 0 ? (
-							transactions.map((tx, index) => (
-								<div 
-									key={index} 
-									className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300 cursor-pointer hover:scale-105 hover:shadow-2xl"
-									style={{
-										background: '#1A1A1A',
-										border: '1px solid rgba(255, 255, 255, 0.1)',
-										boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-									}}
-									onClick={() => openTransactionExplorer(tx.signature)}
-								>
-									<div className="flex items-center justify-between">
-										<div className="flex items-center gap-3">
-											<div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-												{getTransactionIcon(tx.type)}
-											</div>
-											<div>
-												<div className="flex items-center gap-2">
-													<p className="font-medium text-white">
-														{getTransactionLabel(tx.type)}
-													</p>
-													{tx.amount && tx.amount > 0 && (
-														<span className={`text-sm font-medium ${
-															tx.type === 'sent' ? 'text-red-400' : 'text-green-400'
-														}`}>
-															{tx.type === 'sent' ? '-' : '+'}{tx.amount.toFixed(2)} {tx.tokenSymbol || 'SOL'}
-														</span>
-													)}
-												</div>
-												<div className="flex items-center gap-2">
-													<p className="text-sm text-gray-400">
-														{tx.timestamp ? formatDate(tx.timestamp) : "Unknown date"}
-													</p>
-													<p className="text-xs text-gray-500">
-														{formatAddress(tx.signature)}
-													</p>
-												</div>
-											</div>
-										</div>
-										<div className="flex items-center gap-2">
-											<Badge
-												variant="outline"
-												className={
-													tx.type === "failed" 
-														? "border-red-500 text-red-400" 
-														: tx.type === "sent"
-														? "border-orange-500 text-orange-400"
-														: "border-green-500 text-green-400"
-												}
-											>
-												{getTransactionLabel(tx.type)}
-											</Badge>
-											<ExternalLink className="h-4 w-4 text-gray-400" />
-										</div>
-									</div>
-								</div>
-							))
-							) : (
-								<div className="relative overflow-hidden rounded-2xl p-8 text-center"
-									style={{
-										background: '#1A1A1A',
-										border: '1px solid rgba(255, 255, 255, 0.1)',
-										boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-									}}>
-									<div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-										<Clock className="h-8 w-8 text-gray-600" />
-									</div>
-									<h3 className="text-xl font-semibold text-white mb-2">No Transactions Yet</h3>
-									<p className="text-gray-400">
-										Your transaction history will appear here once you start using your wallet.
-									</p>
-								</div>
-							)}
 						</div>
 					)}
 				</div>

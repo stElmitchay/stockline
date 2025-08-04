@@ -43,7 +43,7 @@ interface CashoutModalProps {
 
 // Your company wallet address (replace with actual address)
 // This should be the same as SOLANA_FEE_PAYER_ADDRESS in your environment variables
-const COMPANY_WALLET_ADDRESS = process.env.NEXT_PUBLIC_COMPANY_WALLET_ADDRESS || "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
+const COMPANY_WALLET_ADDRESS = process.env.SOLANA_FEE_PAYER_ADDRESS || "moCAqUGuuLiYxxfKzurCyqkioDFUJbFdKeXb9pbnwnu";
 
 export function CashoutModal({
   isOpen,
@@ -137,7 +137,6 @@ export function CashoutModal({
       });
 
       setFormSubmitted(true);
-      alert('Cashout request submitted! We will contact you to confirm the transaction.');
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit cashout request');
@@ -306,7 +305,7 @@ export function CashoutModal({
            setError('');
           
           // Show success message or redirect
-          alert(`Transaction successful! Hash: ${result.transactionHash}`);
+          console.log(`Transaction successful! Hash: ${result.transactionHash}`);
           onClose();
           return;
         } else {
@@ -333,9 +332,10 @@ export function CashoutModal({
         }
       }
 
-      // Create transaction message with fee payer as backend wallet
+      // Create transaction message with company wallet as fee payer
+      console.log('Using company wallet address:', COMPANY_WALLET_ADDRESS);
       const message = new TransactionMessage({
-        payerKey: new PublicKey(COMPANY_WALLET_ADDRESS), // Backend pays fees
+        payerKey: new PublicKey(COMPANY_WALLET_ADDRESS), // Company wallet pays fees
         recentBlockhash: blockhash,
         instructions: [transferInstruction]
       }).compileToV0Message();
@@ -343,7 +343,7 @@ export function CashoutModal({
       // Create transaction
       const transaction = new VersionedTransaction(message);
 
-      // Use Privy's signTransaction method
+      // Use Privy's signTransaction method for the actual transfer
       const signedTransaction = await signTransaction({
         transaction: transaction,
         connection: connection
@@ -353,6 +353,7 @@ export function CashoutModal({
       const serializedTransaction = Buffer.from(signedTransaction.serialize()).toString('base64');
 
       // Send to your backend
+      console.log('Sending transaction to backend...');
       const response = await fetch('/api/sponsor-cashout', {
         method: 'POST',
         headers: {
@@ -368,8 +369,12 @@ export function CashoutModal({
         })
       });
 
+      console.log('Backend response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Transaction failed');
+        const errorData = await response.json();
+        console.error('Backend error:', errorData);
+        throw new Error(errorData.error || 'Transaction failed');
       }
 
       const { transactionHash } = await response.json();
@@ -399,6 +404,7 @@ export function CashoutModal({
       setMobileNumber("");
       setFormSubmitted(false);
       setPendingCashoutData(null);
+      setLoading(false);
       onClose();
       
     } catch (err) {
@@ -415,159 +421,231 @@ export function CashoutModal({
       title={formSubmitted ? "Complete Transaction" : "Cash Out"}
       description={formSubmitted ? "Complete your cashout transaction" : "Submit your cashout request"}
     >
-      <div className="space-y-4">
-        {formSubmitted && pendingCashoutData && (
-          <div className="p-4 bg-green-900/50 border border-green-500 rounded-lg">
-            <h3 className="text-green-400 font-semibold mb-2">Request Submitted</h3>
-            <p className="text-green-300 text-sm mb-2">
-              Your cashout request has been submitted and confirmed. Complete the transaction below.
-            </p>
-            <div className="text-sm text-green-200">
-              <p>Amount: {pendingCashoutData.amount} {pendingCashoutData.selectedToken.symbol}</p>
-              <p>Email: {pendingCashoutData.email}</p>
-            </div>
-          </div>
-        )}
-        
-        {!formSubmitted && (
-          <>
-            {/* Email Field */}
-            <Input
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email address"
-              required
-            />
-            
-            {/* Mobile Number Field */}
-            <Input
-              label="Mobile Number"
-              type="tel"
-              value={mobileNumber}
-              onChange={(e) => setMobileNumber(e.target.value)}
-              placeholder="Enter your mobile number"
-              required
-            />
-        
-        {/* Token Selector */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Select Token
-          </label>
-          <select
-            value={selectedToken?.mint || ''}
-            onChange={(e) => {
-              const token = allTokens.find(t => t.mint === e.target.value);
-              setSelectedToken(token || null);
-              setAmount(''); // Reset amount when token changes
-            }}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {allTokens.map((token) => (
-              <option key={token.mint} value={token.mint}>
-                {token.symbol} - {token.name} (Balance: {token.balance.toFixed(Math.min(token.decimals, 6))})
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {selectedToken && (
-          <div className="p-3 bg-gray-800 rounded-lg">
-            <p className="text-sm text-gray-400">Balance:</p>
-            <p className="text-white font-semibold">
-              {selectedToken.balance.toFixed(Math.min(selectedToken.decimals, 6))} {selectedToken.symbol}
-            </p>
-          </div>
-        )}
-
-        {selectedToken && (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-400">Quick Select:</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  const amount = (selectedToken.balance * 0.25).toFixed(Math.min(selectedToken.decimals, 6));
-                  setAmount(amount);
-                }}
-                className="flex-1 px-3 py-2 bg-gray-800 hover:bg-[#4CAF50] border border-gray-600 hover:border-[#4CAF50] rounded-lg text-white text-sm transition-colors duration-200"
-              >
-                25%
-              </button>
-              <button
-                onClick={() => {
-                  const amount = (selectedToken.balance * 0.5).toFixed(Math.min(selectedToken.decimals, 6));
-                  setAmount(amount);
-                }}
-                className="flex-1 px-3 py-2 bg-gray-800 hover:bg-[#4CAF50] border border-gray-600 hover:border-[#4CAF50] rounded-lg text-white text-sm transition-colors duration-200"
-              >
-                50%
-              </button>
-              <button
-                onClick={() => {
-                  const amount = selectedToken.balance.toFixed(Math.min(selectedToken.decimals, 6));
-                  setAmount(amount);
-                }}
-                className="flex-1 px-3 py-2 bg-gray-800 hover:bg-[#4CAF50] border border-gray-600 hover:border-[#4CAF50] rounded-lg text-white text-sm transition-colors duration-200"
-              >
-                100%
-              </button>
-            </div>
-          </div>
-        )}
-
-        <Input
-          label={`Amount (${selectedToken?.symbol || 'Token'})`}
-          type="number"
-          step={selectedToken?.decimals === 9 ? "0.001" : "0.01"}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="0.0"
-          max={selectedToken?.balance || 0}
-        />
+      <div className="max-w-md mx-auto p-6 rounded-2xl shadow-2xl transition-all duration-300"
+           style={{
+             background: 'rgba(46, 71, 68, 0.7)',
+             border: '1px solid rgba(255, 255, 255, 0.1)',
+             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+             backdropFilter: 'blur(10px)'
+           }}>
         
         {error && (
-          <div className="p-3 bg-red-900/50 border border-red-500 rounded-lg">
-            <p className="text-red-400 text-sm">{error}</p>
+          <div className="mb-4 p-3 rounded-lg flex items-center gap-2"
+               style={{
+                 background: 'rgba(239, 68, 68, 0.1)',
+                 border: '1px solid rgba(239, 68, 68, 0.3)'
+               }}>
+            <span className="text-red-300 text-sm">{error}</span>
           </div>
         )}
-
-            <Button
-              onClick={handleFormSubmit}
-              disabled={!embeddedWallet || !amount || !selectedToken || !email || !mobileNumber || loading || parseFloat(amount) <= 0 || parseFloat(amount) > (selectedToken?.balance || 0)}
-              className="w-full"
-            >
-              {loading ? 'Submitting...' : `Submit Cashout Request`}
-            </Button>
-          </>
-        )}
         
-        {formSubmitted && pendingCashoutData && (
-          <>
-            <div className="p-3 bg-gray-800 rounded-lg">
-              <p className="text-sm text-gray-400">Transaction Details:</p>
-              <p className="text-white font-semibold">
-                {pendingCashoutData.amount} {pendingCashoutData.selectedToken.symbol}
+        {formSubmitted && pendingCashoutData ? (
+          // Transaction Completion View
+          <div className="space-y-6">
+            <div className="p-4 rounded-lg border border-green-500/30"
+                 style={{
+                   background: 'rgba(16, 185, 129, 0.1)',
+                   backdropFilter: 'blur(5px)'
+                 }}>
+              <h3 className="text-green-400 font-semibold mb-2 flex items-center gap-2">
+                Request Submitted
+              </h3>
+              <p className="text-green-300 text-sm mb-3">
+                Your cashout request has been submitted and confirmed. Complete the transaction below.
               </p>
-              <p className="text-sm text-gray-400 mt-1">
-                To: Company Wallet
-              </p>
+              <div className="text-sm text-green-200 space-y-1">
+                <p>Amount: {pendingCashoutData.amount} {pendingCashoutData.selectedToken.symbol}</p>
+                <p>Email: {pendingCashoutData.email}</p>
+              </div>
             </div>
+            
+
             
             <Button
               onClick={handleCompleteTransaction}
               disabled={!embeddedWallet || loading}
-              className="w-full"
+              className="w-full font-medium py-3 rounded-lg transition-all duration-300"
+              style={{
+                background: loading 
+                  ? 'linear-gradient(135deg, rgba(217, 255, 102, 0.6) 0%, rgba(184, 230, 46, 0.6) 100%)'
+                  : 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
+                color: '#000000',
+                border: '1px solid rgba(217, 255, 102, 0.3)',
+                boxShadow: '0 4px 15px rgba(217, 255, 102, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              }}
             >
-              {loading ? 'Processing Transaction...' : 'Complete Transaction'}
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
+                  Processing Transaction...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  Complete Transaction
+                </div>
+              )}
             </Button>
-          </>
+          </div>
+        ) : (
+          // Cashout Form View
+          <form className="space-y-6" noValidate>
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-300 uppercase tracking-wide">Cashout Details</h3>
+              
+
+              
+              {/* Mobile Number Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Mobile Number *</label>
+                <p className="text-xs text-gray-400 mb-2">We'll contact you on this number to confirm the transaction</p>
+                <Input
+                  type="tel"
+                  value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value)}
+                  className="border-white/20 text-white"
+                  style={{
+                    background: 'rgba(46, 71, 68, 0.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(5px)'
+                  }}
+                  placeholder="Enter your mobile number"
+                  required
+                />
+              </div>
+              
+              {/* Token Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Select Token *</label>
+                <select
+                  value={selectedToken?.symbol || ''}
+                  onChange={(e) => {
+                    const token = allTokens.find(t => t.symbol === e.target.value);
+                    setSelectedToken(token || null);
+                  }}
+                  className="w-full p-3 rounded-lg border border-white/20 text-white"
+                  style={{
+                    background: 'rgba(46, 71, 68, 0.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(5px)'
+                  }}
+                >
+                  <option value="">Select a token</option>
+                  {allTokens.map((token) => (
+                    <option key={token.mint} value={token.symbol}>
+                      {token.symbol} - {token.balance.toFixed(Math.min(token.decimals, 6))}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Amount Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Amount *</label>
+                <Input
+                  type="number"
+                  step={selectedToken?.decimals === 9 ? "0.001" : "0.01"}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="border-white/20 text-white"
+                  style={{
+                    background: 'rgba(46, 71, 68, 0.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(5px)'
+                  }}
+                  placeholder={`Enter amount in ${selectedToken?.symbol || 'tokens'}`}
+                  max={selectedToken?.balance || 0}
+                  required
+                />
+              </div>
+
+              {/* Quick Select Buttons */}
+              {selectedToken && (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-400">Quick Select:</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const amount = (selectedToken.balance * 0.25).toFixed(Math.min(selectedToken.decimals, 6));
+                        setAmount(amount);
+                      }}
+                      className="flex-1 px-3 py-2 rounded-lg text-white text-sm transition-colors duration-200"
+                      style={{
+                        background: 'rgba(46, 71, 68, 0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        backdropFilter: 'blur(5px)'
+                      }}
+                    >
+                      25%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const amount = (selectedToken.balance * 0.5).toFixed(Math.min(selectedToken.decimals, 6));
+                        setAmount(amount);
+                      }}
+                      className="flex-1 px-3 py-2 rounded-lg text-white text-sm transition-colors duration-200"
+                      style={{
+                        background: 'rgba(46, 71, 68, 0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        backdropFilter: 'blur(5px)'
+                      }}
+                    >
+                      50%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const amount = selectedToken.balance.toFixed(Math.min(selectedToken.decimals, 6));
+                        setAmount(amount);
+                      }}
+                      className="flex-1 px-3 py-2 rounded-lg text-white text-sm transition-colors duration-200"
+                      style={{
+                        background: 'rgba(46, 71, 68, 0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        backdropFilter: 'blur(5px)'
+                      }}
+                    >
+                      100%
+                    </button>
+                  </div>
+                </div>
+              )}
+
+
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              onClick={handleFormSubmit}
+              disabled={!embeddedWallet || !amount || !selectedToken || !email || !mobileNumber || loading || parseFloat(amount) <= 0 || parseFloat(amount) > (selectedToken?.balance || 0)}
+              className="w-full font-medium py-3 rounded-lg transition-all duration-300"
+              style={{
+                background: loading 
+                  ? 'linear-gradient(135deg, rgba(217, 255, 102, 0.6) 0%, rgba(184, 230, 46, 0.6) 100%)'
+                  : 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
+                color: '#000000',
+                border: '1px solid rgba(217, 255, 102, 0.3)',
+                boxShadow: '0 4px 15px rgba(217, 255, 102, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              }}
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
+                  Submitting...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  Submit Cashout Request
+                </div>
+              )}
+            </Button>
+
+            <p className="text-xs text-gray-500 text-center">
+              Gas fees will be sponsored by our platform
+            </p>
+          </form>
         )}
-        
-        <p className="text-xs text-gray-500 text-center">
-          Gas fees will be sponsored by our platform
-        </p>
       </div>
     </Modal>
   );
