@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Check for any unauthorized fund transfers
     for (const instruction of message.compiledInstructions) {
-      const programId = accountKeys.get(instruction.programIndex);
+      const programId = accountKeys.get(instruction.programIdIndex);
 
       // Check if instruction is for System Program (transfers)
       if (programId && programId.toBase58() === '11111111111111111111111111111111') {
