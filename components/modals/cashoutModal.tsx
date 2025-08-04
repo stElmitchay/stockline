@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Modal } from "../ui/modal";
+import { Check } from "lucide-react";
 import { useSolanaWallets, useSignTransaction } from "@privy-io/react-auth/solana";
 import { usePrivy } from "@privy-io/react-auth";
 import {
@@ -39,6 +40,8 @@ interface CashoutModalProps {
   onClose: () => void;
   userBalance: number;
   tokens: TokenAccount[];
+  onFormSubmitted?: (data: any) => void;
+  pendingCashoutData?: any;
 }
 
 // Your company wallet address (replace with actual address)
@@ -50,6 +53,8 @@ export function CashoutModal({
   onClose,
   userBalance,
   tokens,
+  onFormSubmitted,
+  pendingCashoutData: externalPendingData,
 }: CashoutModalProps) {
   const [amount, setAmount] = useState("");
   const [selectedToken, setSelectedToken] = useState<TokenAccount | null>(null);
@@ -59,6 +64,7 @@ export function CashoutModal({
   const [mobileNumber, setMobileNumber] = useState("");
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [pendingCashoutData, setPendingCashoutData] = useState<any>(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const { wallets } = useSolanaWallets();
   const { signTransaction } = useSignTransaction();
   const { user } = usePrivy();
@@ -129,14 +135,34 @@ export function CashoutModal({
       }
 
       // Store the cashout data for later transaction
-      setPendingCashoutData({
+      const cashoutData = {
         amount: amountValue,
         selectedToken,
         email,
         mobileNumber
-      });
-
-      setFormSubmitted(true);
+      };
+      
+      setPendingCashoutData(cashoutData);
+      
+      // Show success message
+      setShowSuccessMessage(true);
+      
+      // Notify parent component
+      if (onFormSubmitted) {
+        onFormSubmitted(cashoutData);
+      }
+      
+      // Close modal after 3 seconds
+      setTimeout(() => {
+        onClose();
+        setShowSuccessMessage(false);
+        setFormSubmitted(false);
+        setPendingCashoutData(null);
+        setAmount("");
+        setEmail("");
+        setMobileNumber("");
+        setSelectedToken(null);
+      }, 3000);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit cashout request');
@@ -146,13 +172,14 @@ export function CashoutModal({
   };
 
   const handleCompleteTransaction = async () => {
-    if (!embeddedWallet || !pendingCashoutData) return;
+    const cashoutData = externalPendingData || pendingCashoutData;
+    if (!embeddedWallet || !cashoutData) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const { amount: amountValue, selectedToken } = pendingCashoutData;
+      const { amount: amountValue, selectedToken } = cashoutData;
 
       // Create connection with fallback to more reliable RPC
       const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://mainnet.helius-rpc.com/?api-key=demo';
@@ -388,7 +415,7 @@ export function CashoutModal({
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            email: pendingCashoutData.email,
+            email: cashoutData.email,
             walletAddress: embeddedWallet.address,
             transactionHash
           })
@@ -406,6 +433,11 @@ export function CashoutModal({
       setPendingCashoutData(null);
       setLoading(false);
       onClose();
+      
+      // Notify parent to clear pending data
+      if (onFormSubmitted) {
+        onFormSubmitted(null);
+      }
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Transaction failed');
@@ -439,54 +471,33 @@ export function CashoutModal({
           </div>
         )}
         
-        {formSubmitted && pendingCashoutData ? (
-          // Transaction Completion View
-          <div className="space-y-6">
-            <div className="p-4 rounded-lg border border-green-500/30"
-                 style={{
-                   background: 'rgba(16, 185, 129, 0.1)',
-                   backdropFilter: 'blur(5px)'
-                 }}>
-              <h3 className="text-green-400 font-semibold mb-2 flex items-center gap-2">
-                Request Submitted
-              </h3>
-              <p className="text-green-300 text-sm mb-3">
-                Your cashout request has been submitted and confirmed. Complete the transaction below.
-              </p>
-              <div className="text-sm text-green-200 space-y-1">
-                <p>Amount: {pendingCashoutData.amount} {pendingCashoutData.selectedToken.symbol}</p>
-                <p>Email: {pendingCashoutData.email}</p>
+        {showSuccessMessage && (
+          <div className="mb-4 p-6 rounded-lg border border-green-500/30"
+               style={{
+                 background: 'rgba(16, 185, 129, 0.1)',
+                 backdropFilter: 'blur(5px)'
+               }}>
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg"
+                     style={{
+                       boxShadow: '0 4px 15px rgba(34, 197, 94, 0.4)'
+                     }}>
+                  <Check className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-green-400">Thank You! Your Request Has Been Received.</h3>
+              </div>
+              
+              <div className="space-y-3 text-gray-300">
+                <p className="text-lg">We have successfully received your cashout request.</p>
+                
+                <p className="text-sm">You will be contacted via phone call or WhatsApp to confirm and complete your transaction.</p>
               </div>
             </div>
-            
-
-            
-            <Button
-              onClick={handleCompleteTransaction}
-              disabled={!embeddedWallet || loading}
-              className="w-full font-medium py-3 rounded-lg transition-all duration-300"
-              style={{
-                background: loading 
-                  ? 'linear-gradient(135deg, rgba(217, 255, 102, 0.6) 0%, rgba(184, 230, 46, 0.6) 100%)'
-                  : 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
-                color: '#000000',
-                border: '1px solid rgba(217, 255, 102, 0.3)',
-                boxShadow: '0 4px 15px rgba(217, 255, 102, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-              }}
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
-                  Processing Transaction...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  Complete Transaction
-                </div>
-              )}
-            </Button>
           </div>
-        ) : (
+        )}
+        
+        {!showSuccessMessage && (
           // Cashout Form View
           <form className="space-y-6" noValidate>
             <div className="space-y-4">

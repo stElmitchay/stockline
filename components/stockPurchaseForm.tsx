@@ -71,15 +71,19 @@ export default function StockPurchaseForm({
     setFormData(prev => ({ ...prev, [field]: value }));
     setError(null);
     
-    // Notify parent component of amount changes and show USSD modal
+    // Notify parent component of amount changes
     if (field === 'amountInLeones' && typeof value === 'string') {
       if (onAmountChange) {
         onAmountChange(value);
       }
-      // Show USSD modal when amount is entered (and not empty)
-      if (value.trim() && parseFloat(value) > 0) {
-        setShowUSSDModal(true);
-      }
+    }
+  };
+
+  const handleAmountBlur = () => {
+    setIsAmountFocused(false);
+    // Show USSD modal when user finishes typing and amount is valid
+    if (formData.amountInLeones.trim() && parseFloat(formData.amountInLeones) > 0) {
+      setShowUSSDModal(true);
     }
   };
 
@@ -515,6 +519,32 @@ export default function StockPurchaseForm({
           </div>
         </div>
 
+        {/* Success Message */}
+        <div className="p-6 rounded-2xl border border-green-500/30"
+             style={{
+               background: 'rgba(46, 71, 68, 0.9)',
+               backdropFilter: 'blur(10px)'
+             }}>
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <CheckCircle className="h-8 w-8 text-green-400" />
+              <h3 className="text-xl font-bold text-green-400">Thank You! Your Order is in the Queue.</h3>
+            </div>
+            
+            <div className="space-y-3 text-gray-300">
+              <p className="text-lg">We have successfully received your request.</p>
+              
+              <p className="text-sm">Our team will process your order, and you will receive a final confirmation call or WhatsApp notification before order is completed.</p>
+              
+              <div className="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+                <p className="text-sm text-orange-300 font-medium">
+                  All orders are processed during our business hours (Mon-Fri, 9am-5pm).
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Action Buttons */}
         <div className="space-y-3">
           <Button
@@ -615,7 +645,7 @@ export default function StockPurchaseForm({
               value={formData.amountInLeones}
               onChange={(e) => handleInputChange('amountInLeones', e.target.value)}
               onFocus={() => setIsAmountFocused(true)}
-              onBlur={() => setIsAmountFocused(false)}
+              onBlur={handleAmountBlur}
               className="border-white/20 text-white"
               style={{
                 background: 'rgba(46, 71, 68, 0.5)',

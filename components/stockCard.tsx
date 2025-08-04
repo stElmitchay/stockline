@@ -240,27 +240,18 @@ export function StockCard({ stock }: StockCardProps) {
               {isLoaded ? 'Buy Now' : 'Loading...'}
             </Button>
           </Link>
-          <div className="flex gap-2">
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
-              onClick={() => {
-                const solscanUrl = stock.solscanUrl || `${EXTERNAL_URLS.SOLSCAN_BASE}${stock.solanaAddress}`;
-                window.open(solscanUrl, '_blank');
-              }}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              View Details
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="border-gray-600 text-gray-300 hover:bg-gray-700"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+            onClick={() => {
+              const solscanUrl = stock.solscanUrl || `${EXTERNAL_URLS.SOLSCAN_BASE}${stock.solanaAddress}`;
+              window.open(solscanUrl, '_blank');
+            }}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Details
+          </Button>
         </div>
       </div>
     </div>
