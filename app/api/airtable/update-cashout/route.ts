@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
-const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || 'Stock Purchase Requests';
-
-if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
-  console.error('Missing Airtable configuration');
-}
+// Airtable configuration - standardized with other routes
+const AIRTABLE_BASE_ID = 'appipJcYVv4Grvglt';
+const AIRTABLE_TABLE_ID = 'tblNkOxBSMWJ3iCbK';
 
 async function updateAirtableRecord(recordId: string, fields: Record<string, any>) {
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}/${recordId}`;
+  const AIRTABLE_PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN;
+  
+  if (!AIRTABLE_PAT) {
+    throw new Error('Airtable Personal Access Token is not configured');
+  }
+
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_ID}/${recordId}`;
   
   const response = await fetch(url, {
     method: 'PATCH',
     headers: {
-      'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+      'Authorization': `Bearer ${AIRTABLE_PAT}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -31,7 +33,13 @@ async function updateAirtableRecord(recordId: string, fields: Record<string, any
 }
 
 async function findCashoutRecord(email: string, walletAddress: string) {
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}`;
+  const AIRTABLE_PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN;
+  
+  if (!AIRTABLE_PAT) {
+    throw new Error('Airtable Personal Access Token is not configured');
+  }
+
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_ID}`;
   
   // Create filter to find the most recent pending cashout record for this user
   const filterFormula = `AND(
@@ -49,7 +57,7 @@ async function findCashoutRecord(email: string, walletAddress: string) {
   
   const response = await fetch(`${url}?${params}`, {
     headers: {
-      'Authorization': `Bearer ${AIRTABLE_API_KEY}`
+      'Authorization': `Bearer ${AIRTABLE_PAT}`
     }
   });
 
@@ -64,9 +72,11 @@ async function findCashoutRecord(email: string, walletAddress: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+    const AIRTABLE_PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN;
+    
+    if (!AIRTABLE_PAT) {
       return NextResponse.json(
-        { error: 'Airtable configuration missing' },
+        { error: 'Airtable Personal Access Token is not configured' },
         { status: 500 }
       );
     }

@@ -14,10 +14,18 @@ interface CachedTokenData {
   volume24h: number;
   change24h: number;
   timestamp: number;
+  isAccurate: boolean; // New field to track if data is accurate
+}
+
+// Track failed fetches to avoid repeated attempts
+interface FailedFetchData {
+  timestamp: number;
+  attemptCount: number;
 }
 
 // Enhanced cache for token prices with localStorage persistence
 const tokenPriceCache = new Map<string, CachedTokenData>();
+const failedFetchCache = new Map<string, FailedFetchData>();
 
 // Smart cache tracking
 const tokenAccessCount = new Map<string, number>();
@@ -28,7 +36,9 @@ const CACHE_CONFIG = {
   DEFAULT_TTL: 15 * 60 * 1000, // 15 minutes default for session-based caching
   POPULAR_TOKEN_TTL: 10 * 60 * 1000, // 10 minutes for popular tokens
   UNPOPULAR_TOKEN_TTL: 30 * 60 * 1000, // 30 minutes for unpopular tokens
+  FAILED_FETCH_TTL: 30 * 1000, // 30 seconds before retrying failed fetches
   STORAGE_KEY: 'solana_token_cache',
+  FAILED_FETCH_KEY: 'solana_failed_fetch_cache',
   ACCESS_COUNT_KEY: 'solana_token_access_count',
   LAST_ACCESS_KEY: 'solana_token_last_access'
 };
@@ -43,9 +53,22 @@ function initializeCacheFromStorage() {
     if (cachedData) {
       const parsed = JSON.parse(cachedData);
       Object.entries(parsed).forEach(([address, data]: [string, any]) => {
-        tokenPriceCache.set(address, data);
+        // Only load accurate data from cache
+        if (data.isAccurate !== false) {
+          tokenPriceCache.set(address, data);
+        }
       });
-      console.log(`Loaded ${tokenPriceCache.size} cached tokens from localStorage`);
+      console.log(`Loaded ${tokenPriceCache.size} accurate cached tokens from localStorage`);
+    }
+    
+    // Load failed fetch data
+    const failedFetchData = localStorage.getItem(CACHE_CONFIG.FAILED_FETCH_KEY);
+    if (failedFetchData) {
+      const parsed = JSON.parse(failedFetchData);
+      Object.entries(parsed).forEach(([address, data]: [string, any]) => {
+        failedFetchCache.set(address, data);
+      });
+      console.log(`Loaded ${failedFetchCache.size} failed fetch records from localStorage`);
     }
     
     // Load access count data
@@ -75,9 +98,22 @@ function saveCacheToStorage() {
   if (typeof window === 'undefined') return;
   
   try {
-    // Save token data
-    const cacheData = Object.fromEntries(tokenPriceCache.entries());
+    // Save token cache (only accurate data)
+    const cacheData: Record<string, any> = {};
+    tokenPriceCache.forEach((data, address) => {
+      // Only save accurate data to persistent storage
+      if (data.isAccurate !== false) {
+        cacheData[address] = data;
+      }
+    });
     localStorage.setItem(CACHE_CONFIG.STORAGE_KEY, JSON.stringify(cacheData));
+    
+    // Save failed fetch data
+    const failedFetchData: Record<string, any> = {};
+    failedFetchCache.forEach((data, address) => {
+      failedFetchData[address] = data;
+    });
+    localStorage.setItem(CACHE_CONFIG.FAILED_FETCH_KEY, JSON.stringify(failedFetchData));
     
     // Save access count data
     const accessCountData = Object.fromEntries(tokenAccessCount.entries());
@@ -159,6 +195,33 @@ function trackTokenAccess(tokenAddress: string) {
   if (currentCount % 5 === 0) { // Save every 5 accesses to reduce localStorage writes
     saveCacheToStorage();
   }
+}
+
+// Check if we should retry a failed fetch
+function shouldRetryFailedFetch(tokenAddress: string): boolean {
+  const failedData = failedFetchCache.get(tokenAddress);
+  if (!failedData) return true;
+  
+  const now = Date.now();
+  const timeSinceLastAttempt = now - failedData.timestamp;
+  
+  // Always retry failed fetches after a short delay (30 seconds)
+  return timeSinceLastAttempt > 30000; // 30 seconds
+}
+
+// Mark a fetch as failed
+function markFetchAsFailed(tokenAddress: string) {
+  const now = Date.now();
+  const existingData = failedFetchCache.get(tokenAddress);
+  const attemptCount = existingData ? existingData.attemptCount + 1 : 1;
+  
+  failedFetchCache.set(tokenAddress, {
+    timestamp: now,
+    attemptCount
+  });
+  
+  // Remove from price cache if it exists (in case it was inaccurate)
+  tokenPriceCache.delete(tokenAddress);
 }
 
 /**
@@ -249,12 +312,18 @@ export async function fetchTokenData(tokenAddress: string) {
     // Track this access for smart caching
     trackTokenAccess(tokenAddress);
     
-    // Check cache with smart invalidation
+    // Check if we should retry a failed fetch
+    if (!shouldRetryFailedFetch(tokenAddress)) {
+      console.log(`Retrying fetch for ${tokenAddress} - recent failure, will retry in a moment`);
+      // Return zero data but don't block the fetch - let it proceed
+    }
+    
+    // Check cache with smart invalidation (only for accurate data)
     const now = Date.now();
     const cacheEntry = tokenPriceCache.get(tokenAddress);
     
-    if (cacheEntry && !shouldInvalidateCache(tokenAddress)) {
-      console.log(`Using smart cached price for ${tokenAddress}: $${cacheEntry.price.toFixed(4)}`);
+    if (cacheEntry && cacheEntry.isAccurate !== false && !shouldInvalidateCache(tokenAddress)) {
+      console.log(`Using accurate cached price for ${tokenAddress}: $${cacheEntry.price.toFixed(4)}`);
       return {
         price: cacheEntry.price,
         marketCap: cacheEntry.marketCap,
@@ -281,11 +350,15 @@ export async function fetchTokenData(tokenAddress: string) {
           change24h: change24h ? Number(change24h.toFixed(2)) : Number(((Math.random() - 0.5) * 10).toFixed(2))
         };
         
-        // Cache the result
+        // Cache the accurate result
         tokenPriceCache.set(tokenAddress, {
           ...tokenData,
-          timestamp: now
+          timestamp: now,
+          isAccurate: true
         });
+        
+        // Remove from failed fetch cache if it was there
+        failedFetchCache.delete(tokenAddress);
         
         // Save to localStorage
         saveCacheToStorage();
@@ -294,32 +367,32 @@ export async function fetchTokenData(tokenAddress: string) {
       }
     }
     
-    // If no valid price found, return fallback data
-    console.warn(`No valid price found for ${tokenAddress}, using fallback data`);
-    const fallbackData = {
-      price: 0.01,
-      marketCap: 10000000,
-      volume24h: 100000,
-      change24h: 0
-    };
-    
-    // Cache the fallback data
-    tokenPriceCache.set(tokenAddress, {
-      ...fallbackData,
-      timestamp: now
-    });
+    // If no valid price found, mark as failed and return zero data
+    console.warn(`No valid price found for ${tokenAddress}, marking as failed fetch`);
+    markFetchAsFailed(tokenAddress);
     
     // Save to localStorage
     saveCacheToStorage();
     
-    return fallbackData;
+    return {
+      price: 0,
+      marketCap: 0,
+      volume24h: 0,
+      change24h: 0
+    };
   } catch (error) {
     console.error(`Error fetching data for token ${tokenAddress}:`, error);
-    // Return fallback data instead of throwing
+    
+    // Mark as failed fetch
+    markFetchAsFailed(tokenAddress);
+    
+    // Save to localStorage
+    saveCacheToStorage();
+    
     return {
-      price: 0.01,
-      marketCap: 10000000,
-      volume24h: 100000,
+      price: 0,
+      marketCap: 0,
+      volume24h: 0,
       change24h: 0
     };
   }
@@ -348,9 +421,15 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
     const dataMap = new Map();
     
     validAddresses.forEach(address => {
+      // Check if we should retry a failed fetch
+      if (!shouldRetryFailedFetch(address)) {
+        console.log(`Retrying ${address} - recent failure, will retry now`);
+        // Continue with fetch even if recently failed
+      }
+      
       const cacheEntry = tokenPriceCache.get(address);
-      if (cacheEntry && (now - cacheEntry.timestamp < 60000)) {
-        console.log(`Using cached data for ${address}`);
+      if (cacheEntry && cacheEntry.isAccurate !== false && (now - cacheEntry.timestamp < 60000)) {
+        console.log(`Using accurate cached data for ${address}`);
         dataMap.set(address, {
           price: cacheEntry.price,
           marketCap: cacheEntry.marketCap,
@@ -395,34 +474,39 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
                   change24h: change24h ? Number(change24h.toFixed(2)) : Number(((Math.random() - 0.5) * 10).toFixed(2))
                 };
                 
-                tokenPriceCache.set(address, { ...tokenData, timestamp: now });
+                // Cache accurate data
+                tokenPriceCache.set(address, { 
+                  ...tokenData, 
+                  timestamp: now,
+                  isAccurate: true
+                });
+                
+                // Remove from failed fetch cache
+                failedFetchCache.delete(address);
+                
                 dataMap.set(address, tokenData);
                 console.log(`✅ Success: ${address} - $${price.toFixed(4)}`);
               } else {
-                // Fallback data for tokens without valid prices
-                const fallbackData = {
-                  price: 0.01,
-                  marketCap: 10000000,
-                  volume24h: 100000,
+                // Mark as failed fetch for tokens without valid prices
+                markFetchAsFailed(address);
+                dataMap.set(address, {
+                  price: 0,
+                  marketCap: 0,
+                  volume24h: 0,
                   change24h: 0
-                };
-                
-                tokenPriceCache.set(address, { ...fallbackData, timestamp: now });
-                dataMap.set(address, fallbackData);
-                console.log(`⚠️ Fallback: ${address} - No valid price`);
+                });
+                console.log(`⚠️ Failed: ${address} - No valid price`);
               }
             } else {
-              // Fallback data for tokens not in response
-              const fallbackData = {
-                price: 0.01,
-                marketCap: 10000000,
-                volume24h: 100000,
+              // Mark as failed fetch for tokens not in response
+              markFetchAsFailed(address);
+              dataMap.set(address, {
+                price: 0,
+                marketCap: 0,
+                volume24h: 0,
                 change24h: 0
-              };
-              
-              tokenPriceCache.set(address, { ...fallbackData, timestamp: now });
-              dataMap.set(address, fallbackData);
-              console.log(`⚠️ Fallback: ${address} - Not in response`);
+              });
+              console.log(`⚠️ Failed: ${address} - Not in response`);
             }
           }
           
@@ -450,10 +534,11 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
                   dataMap.set(address, data);
                 } catch (individualError) {
                   console.error(`Failed to fetch ${address}:`, individualError);
+                  markFetchAsFailed(address);
                   dataMap.set(address, {
-                    price: 0.01,
-                    marketCap: 10000000,
-                    volume24h: 100000,
+                    price: 0,
+                    marketCap: 0,
+                    volume24h: 0,
                     change24h: 0
                   });
                 }
@@ -722,12 +807,14 @@ function updateStocksWithLiveData(tokenDataMap: Map<string, any>) {
  */
 export function clearPriceCache(): void {
   tokenPriceCache.clear();
+  failedFetchCache.clear();
   tokenAccessCount.clear();
   tokenLastAccess.clear();
   
   // Clear localStorage as well
   if (typeof window !== 'undefined') {
     localStorage.removeItem(CACHE_CONFIG.STORAGE_KEY);
+    localStorage.removeItem(CACHE_CONFIG.FAILED_FETCH_KEY);
     localStorage.removeItem(CACHE_CONFIG.ACCESS_COUNT_KEY);
     localStorage.removeItem(CACHE_CONFIG.LAST_ACCESS_KEY);
     // Clear session-based cache tracking
@@ -735,7 +822,7 @@ export function clearPriceCache(): void {
     sessionStorage.removeItem('stocks_initialized');
   }
   
-  console.log('Price cache and session data cleared');
+  console.log('Price cache, failed fetch cache, and session data cleared');
 }
 
 /**
@@ -750,14 +837,33 @@ export function resetSessionCache(): void {
 }
 
 /**
+ * Clear only the failed fetch cache
+ */
+export function clearFailedFetchCache(): void {
+  failedFetchCache.clear();
+  
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(CACHE_CONFIG.FAILED_FETCH_KEY);
+    console.log('Failed fetch cache cleared');
+  }
+}
+
+/**
  * Get cache statistics
  */
 export function getCacheStats() {
   return {
-    size: tokenPriceCache.size,
-    entries: Array.from(tokenPriceCache.entries()).map(([address, data]) => ({
+    accurateCacheSize: tokenPriceCache.size,
+    failedFetchSize: failedFetchCache.size,
+    accurateEntries: Array.from(tokenPriceCache.entries()).map(([address, data]) => ({
       address,
       price: data.price,
+      isAccurate: data.isAccurate,
+      age: Date.now() - data.timestamp
+    })),
+    failedEntries: Array.from(failedFetchCache.entries()).map(([address, data]) => ({
+      address,
+      attemptCount: data.attemptCount,
       age: Date.now() - data.timestamp
     }))
   };
@@ -788,14 +894,15 @@ export async function warmUpCache(tokenAddresses: string[]) {
   
   console.log(`🔥 Warming up cache for ${tokenAddresses.length} tokens`);
   
-  // Filter out tokens that already have fresh cache entries (less than 5 minutes old for session-based caching)
+  // Filter out tokens that already have fresh cache entries
   const now = Date.now();
   const tokensToFetch = tokenAddresses.filter(address => {
     const cached = tokenPriceCache.get(address);
     if (!cached) return true;
     
+    // Only fetch if cache is old and data is accurate
     const age = now - cached.timestamp;
-    return age > (5 * 60 * 1000); // Only fetch if older than 5 minutes
+    return age > (5 * 60 * 1000) && cached.isAccurate !== false; // Only fetch if older than 5 minutes and accurate
   });
   
   if (tokensToFetch.length === 0) {
