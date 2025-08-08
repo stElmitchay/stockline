@@ -6,7 +6,8 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
-		"lint": "next lint"
+		"lint": "next lint",
+		"generate-og": "node scripts/generate-og-image.js"
 	},
 	"dependencies": {
 		"@metaplex-foundation/js": "^0.20.1",
@@ -26,6 +27,7 @@
 		"html2canvas": "^1.4.1",
 		"lucide-react": "^0.513.0",
 		"next": "15.3.3",
+		"puppeteer": "^24.16.0",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
 		"tailwind-merge": "^3.3.1"

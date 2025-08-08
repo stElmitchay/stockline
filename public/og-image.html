@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Stockline Social Preview</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #1A1A1A;
+      color: white;
+      width: 1200px;
+      height: 630px;
+      overflow: hidden;
+    }
+    
+    .container {
+      width: 1200px;
+      height: 630px;
+      position: relative;
+      background: linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .background-pattern {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.05;
+      background-image: 
+        radial-gradient(circle at 25% 25%, #D9FF66 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, #8C66FF 0%, transparent 50%);
+    }
+    
+    .content {
+      position: relative;
+      z-index: 10;
+      padding: 60px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 40px;
+    }
+    
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    
+    .stock-logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 32px;
+      color: #000;
+      box-shadow: 0 8px 24px rgba(217, 255, 102, 0.3);
+    }
+    
+    .stock-info h1 {
+      font-size: 48px;
+      font-weight: 800;
+      margin: 0 0 8px 0;
+      background: linear-gradient(135deg, #FFFFFF 0%, #D9FF66 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .stock-info .symbol {
+      font-size: 24px;
+      color: #9CA3AF;
+      font-weight: 500;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+    
+    .price-section {
+      text-align: right;
+    }
+    
+    .price {
+      font-size: 36px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 8px;
+    }
+    
+    .change {
+      font-size: 18px;
+      font-weight: 600;
+      color: #4CAF50;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+    
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 40px;
+    }
+    
+    .tagline {
+      font-size: 32px;
+      font-weight: 600;
+      color: #E5E7EB;
+      text-align: center;
+      line-height: 1.3;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 40px;
+    }
+    
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .stat-bullet {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    
+    .stat-bullet.green { background: #4CAF50; }
+    .stat-bullet.purple { background: #8C66FF; }
+    
+    .stat-text {
+      font-size: 16px;
+      color: #9CA3AF;
+    }
+    
+    .stat-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      margin-left: auto;
+    }
+    
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 40px;
+    }
+    
+    .brand {
+      font-size: 24px;
+      font-weight: 700;
+      color: #D9FF66;
+    }
+    
+    .cta {
+      background: #D9FF66;
+      color: #000;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      text-decoration: none;
+    }
+    
+    .chart-container {
+      height: 120px;
+      position: relative;
+      margin: 20px 0;
+    }
+    
+    .chart-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .chart-line path {
+      stroke: #4CAF50;
+      stroke-width: 3;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    
+    .chart-points circle {
+      fill: #4CAF50;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="background-pattern"></div>
+    <div class="content">
+      <div class="header">
+        <div class="logo-section">
+          <div class="stock-logo">
+            <img src="https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/AAPL.png" 
+                 alt="Apple" 
+                 style="width: 100%; height: 100%; object-fit: cover; border-radius: 16px;">
+          </div>
+          <div class="stock-info">
+            <h1>Apple xStock</h1>
+            <div class="symbol">AAPLx</div>
+          </div>
+        </div>
+        <div class="price-section">
+          <div class="price">$185.64</div>
+          <div class="change">
+            <span>↗</span>
+            +2.45%
+          </div>
+        </div>
+      </div>
+      
+      <div class="main-content">
+        <div class="tagline">
+          Own a piece of companies you use everyday
+        </div>
+        
+        <div class="chart-container">
+          <svg class="chart-line" viewBox="0 0 400 120">
+            <path d="M 0 80 L 50 75 L 100 60 L 150 45 L 200 35 L 250 30 L 300 25 L 350 20 L 400 15"></path>
+            <circle cx="0" cy="80" r="3"/>
+            <circle cx="50" cy="75" r="3"/>
+            <circle cx="100" cy="60" r="3"/>
+            <circle cx="150" cy="45" r="3"/>
+            <circle cx="200" cy="35" r="3"/>
+            <circle cx="250" cy="30" r="3"/>
+            <circle cx="300" cy="25" r="3"/>
+            <circle cx="350" cy="20" r="3"/>
+            <circle cx="400" cy="15" r="3"/>
+          </svg>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-bullet green"></div>
+            <span class="stat-text">Market Cap</span>
+            <span class="stat-value">$2.9T</span>
+          </div>
+          <div class="stat-item">
+            <div class="stat-bullet purple"></div>
+            <span class="stat-text">24h Volume</span>
+            <span class="stat-value">$45.2B</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="footer">
+        <div class="brand">Stockline</div>
+        <div class="cta">Start Investing</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html> 
