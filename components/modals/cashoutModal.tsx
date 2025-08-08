@@ -68,6 +68,13 @@ export function CashoutModal({
   const { wallets } = useSolanaWallets();
   const { signTransaction } = useSignTransaction();
   const { user } = usePrivy();
+  
+  // Initialize with external pending data if available
+  useEffect(() => {
+    if (externalPendingData) {
+      setPendingCashoutData(externalPendingData);
+    }
+  }, [externalPendingData]);
 
   // Auto-fill email from Privy user data
   useEffect(() => {
@@ -157,16 +164,22 @@ export function CashoutModal({
         onFormSubmitted(cashoutData);
       }
       
-      // Close modal after 3 seconds
+      // Close modal after 3 seconds and then open transaction modal
       setTimeout(() => {
-        onClose();
+        // Reset form state
         setShowSuccessMessage(false);
         setFormSubmitted(false);
-        setPendingCashoutData(null);
         setAmount("");
         setEmail("");
         setMobileNumber("");
         setSelectedToken(null);
+        
+        // Close the current modal
+        onClose();
+        
+        // Immediately trigger the transaction modal to open
+        // This is done by the parent component since it controls the modal state
+        // The parent will detect pendingCashoutData and show the modal
       }, 3000);
       
     } catch (err) {
@@ -435,13 +448,13 @@ export function CashoutModal({
       setEmail("");
       setMobileNumber("");
       setFormSubmitted(false);
-      setPendingCashoutData(null);
+      setPendingCashoutData(null); // Clear internal state
       setLoading(false);
       onClose();
       
       // Notify parent to clear pending data
       if (onFormSubmitted) {
-        onFormSubmitted(null);
+        onFormSubmitted(null); // This tells the parent the transaction is complete
       }
       
     } catch (err) {
@@ -451,12 +464,24 @@ export function CashoutModal({
     }
   };
 
+  // Determine if we should show the transaction screen directly
+  const showTransactionScreen = useMemo(() => {
+    return !!pendingCashoutData || !!externalPendingData;
+  }, [pendingCashoutData, externalPendingData]);
+  
+  // If modal is opened with pending data, go straight to transaction
+  useEffect(() => {
+    if (isOpen && showTransactionScreen && !loading) {
+      handleCompleteTransaction();
+    }
+  }, [isOpen, showTransactionScreen]);
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={formSubmitted ? "Complete Transaction" : "Cash Out"}
-      description={formSubmitted ? "Complete your cashout transaction" : "Submit your cashout request"}
+      title={showTransactionScreen ? "Complete Transaction" : "Cash Out"}
+      description={showTransactionScreen ? "Complete your cashout transaction" : "Submit your cashout request"}
     >
       <div className="max-w-md mx-auto p-6 rounded-2xl shadow-2xl transition-all duration-300"
            style={{
@@ -502,7 +527,7 @@ export function CashoutModal({
           </div>
         )}
         
-        {!showSuccessMessage && (
+        {!showSuccessMessage && !showTransactionScreen && (
           // Cashout Form View
           <form className="space-y-6" noValidate>
             <div className="space-y-4">
@@ -687,6 +712,34 @@ export function CashoutModal({
               Gas fees will be sponsored by our platform
             </p>
           </form>
+        )}
+        
+        {!showSuccessMessage && showTransactionScreen && (
+          // Transaction Processing View
+          <div className="space-y-6">
+            <div className="p-4 rounded-lg border border-orange-500/30"
+                 style={{
+                   background: 'rgba(234, 88, 12, 0.1)',
+                   backdropFilter: 'blur(5px)'
+                 }}>
+              <div className="text-center space-y-4">
+                <h3 className="text-lg font-medium text-orange-400">Processing Transaction</h3>
+                <p className="text-sm text-gray-300">
+                  Your transaction is being processed. Please wait and do not close this window.
+                </p>
+                {loading && (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-400"></div>
+                  </div>
+                )}
+                {error && (
+                  <div className="text-red-400 text-sm mt-2">
+                    {error}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </Modal>

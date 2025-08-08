@@ -52,23 +52,7 @@ export function DisclosureModal({ isOpen, onAccept }: DisclosureModalProps) {
         <div className="p-6 max-h-96 overflow-y-auto" onScroll={handleScroll}>
           <div className="text-white text-sm leading-relaxed space-y-4">
             <p>
-              <strong>Stockline provides a platform to access tokenized U.S. equities.</strong> We are not a registered investment advisor or broker-dealer. All investment decisions are made at your own risk.
-            </p>
-            
-            <p>
-              <strong>Risk Warning:</strong> Investing in securities involves risks, including the possible loss of the principal amount invested. The value of stocks can fluctuate significantly, and past performance does not guarantee future returns.
-            </p>
-            
-            <p>
-              <strong>No Financial Advice:</strong> Stockline does not provide investment, tax, or legal advice. You should consult with qualified professionals before making any investment decisions.
-            </p>
-            
-            <p>
-              <strong>Platform Nature:</strong> Our platform facilitates peer-to-peer trading of tokenized securities. We do not guarantee the liquidity, accuracy of pricing, or availability of any particular security.
-            </p>
-            
-            <p className="text-gray-300 text-xs">
-              By continuing to use Stockline, you acknowledge that you have read, understood, and agree to these disclosures and assume all risks associated with your investment decisions.
+              Disclaimer: Stockline provides a platform to access tokenized U.S. equities. We are not a registered investment advisor or broker-dealer. All investment decisions are made at your own risk. Investing in securities involves risks, including the possible loss of the principal amount invested. The value of stocks can fluctuate, and past performance does not guarantee future returns. Stockline does not provide investment, tax, or legal advice.
             </p>
           </div>
         </div>
