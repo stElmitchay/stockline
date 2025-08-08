@@ -25,8 +25,6 @@ function PurchaseForm() {
   // Exchange rate and calculations
   const USD_TO_SLL_RATE = 24.5;
   const usdEquivalent = userAmount ? (parseFloat(userAmount) / USD_TO_SLL_RATE) : 0;
-  const stockPriceNum = parseFloat(stockPrice || '0') || 0;
-  const estimatedShares = stockPriceNum > 0 ? (usdEquivalent / stockPriceNum) : 0;
 
   // Get user data from Privy
   const userEmail = user?.email?.address || '';

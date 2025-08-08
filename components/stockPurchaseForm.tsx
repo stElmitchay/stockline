@@ -71,10 +71,8 @@ export default function StockPurchaseForm({
     confirmationManualProcess: false // "this transaction is process manually..."
   });
   
-  // Calculate USD equivalent and shares
+  // Calculate USD equivalent
   const usdEquivalent = formData.amountInLeones ? (parseFloat(formData.amountInLeones) / USD_TO_SLL_RATE) : 0;
-  const stockPriceNum = parseFloat(stockPrice) || 0;
-  const estimatedShares = stockPriceNum > 0 ? (usdEquivalent / stockPriceNum) : 0;
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -116,7 +114,6 @@ export default function StockPurchaseForm({
   const generateReceiptData = () => {
     const timestamp = new Date().toLocaleString();
     const usdEquivalent = parseFloat(formData.amountInLeones) / USD_TO_SLL_RATE;
-    const estimatedShares = parseFloat(stockPrice) > 0 ? (usdEquivalent / parseFloat(stockPrice)) : 0;
     
     return {
       timestamp,
@@ -125,7 +122,6 @@ export default function StockPurchaseForm({
       stockPrice,
       amountInLeones: formData.amountInLeones,
       usdEquivalent: usdEquivalent.toFixed(2),
-      estimatedShares: estimatedShares.toFixed(4),
       mobileNumber: formData.mobileNumber,
       walletAddress: formData.walletAddress,
       email: formData.email
@@ -461,10 +457,7 @@ export default function StockPurchaseForm({
                 <span className="text-white font-medium">${receiptData.usdEquivalent}</span>
               </div>
               
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Quantity</span>
-                <span className="text-white font-medium">{receiptData.estimatedShares} shares</span>
-              </div>
+
               
               <div className="flex justify-between items-center">
                 <span className="text-gray-300">Method</span>
@@ -663,10 +656,7 @@ export default function StockPurchaseForm({
                    <span className="text-sm text-gray-400">Stock Price:</span>
                    <span className="text-sm text-white font-medium">${stockPrice} USD</span>
                  </div>
-                 <div className="flex justify-between items-center border-t border-white/10 pt-2">
-                   <span className="text-sm text-gray-300 font-medium">Estimated Shares:</span>
-                   <span className="text-sm text-yellow-400 font-bold">{estimatedShares.toFixed(4)} shares</span>
-                 </div>
+
                </div>
              </div>
            )}
