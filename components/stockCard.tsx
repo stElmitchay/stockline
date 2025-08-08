@@ -237,7 +237,7 @@ export function StockCard({ stock }: StockCardProps) {
               disabled={!isLoaded}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
-              {isLoaded ? 'Buy Now' : 'Loading...'}
+              {isLoaded ? 'Order Now' : 'Loading...'}
             </Button>
           </Link>
           <Button 

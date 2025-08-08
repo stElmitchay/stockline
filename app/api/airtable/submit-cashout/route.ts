@@ -42,14 +42,15 @@ export async function POST(request: NextRequest) {
     const {
       email,
       mobileNumber,
-      amount,
+      tokenAmount,
+      usdValue,
       tokenSymbol,
       walletAddress,
       transactionHash
     } = await request.json();
 
     // Validate required fields
-    if (!email || !mobileNumber || !amount || !tokenSymbol || !walletAddress) {
+    if (!email || !mobileNumber || !tokenAmount || !usdValue || !tokenSymbol || !walletAddress) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     const airtableFields = {
       'Email': email,
       'Mobile Number': mobileNumber,
-      'Amount in Leones': parseFloat(amount),
+      'CashOut Amount': parseFloat(usdValue), // Using the exact field name from Airtable
       'Stock Ticker': tokenSymbol, // Using this field for token symbol
       'Wallet Address': walletAddress,
       'Transaction Type': 'CashOut',

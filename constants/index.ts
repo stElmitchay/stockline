@@ -10,6 +10,7 @@ export const API_CONFIG = {
 
 // Sort Options
 export const SORT_OPTIONS = [
+  { value: 'alphabetical', label: 'A-Z' },
   { value: 'marketCap', label: 'Market Cap' },
   { value: 'price', label: 'Price' },
   { value: 'change24h', label: '24h Change' },
@@ -19,7 +20,7 @@ export const SORT_OPTIONS = [
 // Default Values
 export const DEFAULTS = {
   SECTOR: 'all',
-  SORT_BY: 'marketCap',
+  SORT_BY: 'alphabetical',
   SEARCH_QUERY: '' as string
 } as const;
 

@@ -14,6 +14,6 @@ export interface StockData {
   xStocks: Stock[];
 }
 
-export type SortOption = 'marketCap' | 'price' | 'change24h' | 'volume';
+export type SortOption = 'alphabetical' | 'marketCap' | 'price' | 'change24h' | 'volume';
 
 // Sector type removed as per requirements

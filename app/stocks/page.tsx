@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, TrendingUp, TrendingDown, BarChart3, DollarSign, Filter, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { StockCard } from "@/components/stockCard";
 import { StockFilters } from "@/components/stockFilters";
 import { LoadingSkeleton } from "@/components/loadingSkeleton";
+import { DisclosureModal } from "@/components/modals/disclosureModal";
 import { useStocks } from "@/hooks/useStocks";
 import Navigation from "@/components/navigation";
 
@@ -15,6 +16,20 @@ export default function StocksMarketplace() {
   const { stocks, filteredStocks, isLoading, searchQuery, sortBy, stats, setSearchQuery, setSortBy, refreshData } = useStocks();
   const [showFilters, setShowFilters] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showDisclosureModal, setShowDisclosureModal] = useState(false);
+
+  // Check if user has agreed to disclosures
+  useEffect(() => {
+    const hasAgreedToDisclosures = localStorage.getItem('stockline_disclosures_agreed');
+    if (!hasAgreedToDisclosures) {
+      setShowDisclosureModal(true);
+    }
+  }, []);
+
+  const handleDisclosureAccept = () => {
+    localStorage.setItem('stockline_disclosures_agreed', 'true');
+    setShowDisclosureModal(false);
+  };
 
   // Show loading skeletons only if we have no stocks yet
   const showLoadingSkeletons = isLoading && stocks.length === 0;
@@ -35,7 +50,7 @@ export default function StocksMarketplace() {
             <div className="flex items-start justify-between gap-4">
               {/* Main Text Content */}
               <div className="flex-1">
-                <h1 className="text-3xl font-bold text-gray-100 mb-2">Buy Now!</h1>
+                <h1 className="text-3xl font-bold text-gray-100 mb-2">Own a piece of a company you use everyday</h1>
                 <p className="text-gray-400">Start your investment journey here</p>
               </div>
               
@@ -150,6 +165,23 @@ export default function StocksMarketplace() {
           </div>
         )}
       </div>
+      
+      {/* Footer Section */}
+       <footer className="mt-8 py-6">
+         <div className="container mx-auto px-4">
+           <div className="max-w-3xl mx-auto">
+             <p className="text-gray-500 text-xs leading-relaxed opacity-60 text-center">
+               Stockline provides a platform to access tokenized U.S. equities. We are not a registered investment advisor or broker-dealer. All investment decisions are made at your own risk. Investing in securities involves risks, including the possible loss of the principal amount invested and Stockline by Mocha
+             </p>
+           </div>
+         </div>
+       </footer>
+      
+      {/* Disclosure Modal */}
+      <DisclosureModal 
+        isOpen={showDisclosureModal} 
+        onAccept={handleDisclosureAccept} 
+      />
     </div>
   );
 }

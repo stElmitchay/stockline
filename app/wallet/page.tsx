@@ -693,13 +693,12 @@ export default function WalletPage() {
 		}
 	};
 
-	// Calculate total portfolio value
+	// Calculate total portfolio value (SPL tokens only)
 	const calculateTotalPortfolioValue = () => {
-		const solValue = balance * solPrice;
 		const tokenValues = tokens.reduce((total, token) => {
 			return total + (token.balance * (token.price || 0));
 		}, 0);
-		return solValue + tokenValues;
+		return tokenValues;
 	};
 
 	return (
@@ -827,31 +826,7 @@ export default function WalletPage() {
 						</div>
 					) : (
 						<div className="space-y-4">
-							{/* SOL Balance */}
-							<div className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
-								style={{
-									background: '#1A1A1A',
-									border: '1px solid rgba(255, 255, 255, 0.1)',
-									boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-								}}>
-								<div className="flex items-center justify-between">
-									<div className="flex items-center gap-3">
-										<div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
-											<span className="text-white font-bold text-sm">SOL</span>
-										</div>
-										<div>
-											<p className="font-medium text-white">Solana</p>
-											<p className="text-sm text-gray-400">SOL</p>
-										</div>
-									</div>
-									<div className="text-right">
-										<p className="font-medium text-white">{balance.toFixed(2)} SOL</p>
-										<p className="text-sm text-gray-400">${(balance * solPrice).toFixed(2)}</p>
-									</div>
-								</div>
-							</div>
-
-							{/* Token Holdings */}
+							{/* SPL Token Holdings Only */}
 							{tokens.length > 0 ? (
 								tokens.map((token, index) => (
 								<div key={index} className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"

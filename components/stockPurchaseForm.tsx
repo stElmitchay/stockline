@@ -45,6 +45,15 @@ export default function StockPurchaseForm({
     (account) => account.type === "wallet" && account.chainType === "solana"
   );
   const walletAddress = (solanaWalletAccount as any)?.address || '';
+  
+  // Update form data when user authentication state changes
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      email: userEmail,
+      walletAddress: walletAddress
+    }));
+  }, [userEmail, walletAddress]);
 
   // Exchange rate (1 USD = 24.5 SLL)
   const USD_TO_SLL_RATE = 24.5;
@@ -317,8 +326,8 @@ export default function StockPurchaseForm({
 
     try {
       // Validate required fields
-      if (!formData.mobileNumber || !formData.amountInLeones) {
-        throw new Error('Please fill in all required fields');
+      if (!formData.email || !formData.mobileNumber || !formData.amountInLeones || !formData.stockTicker || !formData.walletAddress) {
+        throw new Error('Please fill in all required fields. Make sure you are logged in and have a connected wallet.');
       }
 
       if (!formData.confirmation1 || !formData.confirmation2 || !formData.confirmationManualProcess) {
@@ -519,31 +528,7 @@ export default function StockPurchaseForm({
           </div>
         </div>
 
-        {/* Success Message */}
-        <div className="p-6 rounded-2xl border border-green-500/30"
-             style={{
-               background: 'rgba(46, 71, 68, 0.9)',
-               backdropFilter: 'blur(10px)'
-             }}>
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <CheckCircle className="h-8 w-8 text-green-400" />
-              <h3 className="text-xl font-bold text-green-400">Thank You! Your Order is in the Queue.</h3>
-            </div>
-            
-            <div className="space-y-3 text-gray-300">
-              <p className="text-lg">We have successfully received your request.</p>
-              
-              <p className="text-sm">Our team will process your order, and you will receive a final confirmation call or WhatsApp notification before order is completed.</p>
-              
-              <div className="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
-                <p className="text-sm text-orange-300 font-medium">
-                  All orders are processed during our business hours (Mon-Fri, 9am-5pm).
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Success Message removed as it's already shown in the popup */}
 
         {/* Action Buttons */}
         <div className="space-y-3">
@@ -777,7 +762,7 @@ export default function StockPurchaseForm({
           ) : (
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              Buy Now
+              Order Now
             </div>
           )}
         </Button>

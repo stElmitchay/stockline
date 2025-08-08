@@ -172,6 +172,8 @@ export const useStocks = (): UseStocksReturn => {
     // Sort stocks
     filtered.sort((a, b) => {
       switch (sortBy) {
+        case 'alphabetical':
+          return a.name.localeCompare(b.name);
         case 'marketCap':
           return (b.marketCap ?? 0) - (a.marketCap ?? 0);
         case 'price':

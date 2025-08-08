@@ -115,6 +115,10 @@ export function CashoutModal({
         throw new Error("Invalid amount");
       }
 
+      // Calculate USD value from token amount and price
+      const tokenPrice = selectedToken.price || 0;
+      const usdValue = amountValue * tokenPrice;
+
       // Submit to Airtable for initial record
       const response = await fetch('/api/airtable/submit-cashout', {
         method: 'POST',
@@ -124,7 +128,8 @@ export function CashoutModal({
         body: JSON.stringify({
           email,
           mobileNumber,
-          amount: amountValue,
+          tokenAmount: amountValue,
+          usdValue: usdValue,
           tokenSymbol: selectedToken.symbol,
           walletAddress: embeddedWallet.address
         })
@@ -567,6 +572,32 @@ export function CashoutModal({
                   max={selectedToken?.balance || 0}
                   required
                 />
+                {/* USD Value Display */}
+                {amount && selectedToken?.price && parseFloat(amount) > 0 && (
+                  <div className="mt-2 p-2 rounded-lg" style={{
+                    background: 'rgba(217, 255, 102, 0.1)',
+                    border: '1px solid rgba(217, 255, 102, 0.3)'
+                  }}>
+                    <p className="text-sm text-gray-300">
+                      USD Value: <span className="font-semibold text-[#D9FF66]">
+                        ${(parseFloat(amount) * selectedToken.price).toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      This USD amount will be recorded in your cashout request
+                    </p>
+                  </div>
+                )}
+                {amount && selectedToken && !selectedToken.price && parseFloat(amount) > 0 && (
+                  <div className="mt-2 p-2 rounded-lg" style={{
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)'
+                  }}>
+                    <p className="text-sm text-red-300">
+                      Price unavailable for this token
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Quick Select Buttons */}

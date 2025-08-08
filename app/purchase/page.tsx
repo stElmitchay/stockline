@@ -7,12 +7,14 @@ import { ArrowLeft, CheckCircle, DollarSign, TrendingUp, Shield, Clock, User } f
 import Link from "next/link";
 import Navigation from "@/components/navigation";
 import StockPurchaseForm from "@/components/stockPurchaseForm";
+import SuccessImageModal from "@/components/modals/successImageModal";
 
 function PurchaseForm() {
   const searchParams = useSearchParams();
   const { user, authenticated } = usePrivy();
   const [isSuccess, setIsSuccess] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [userAmount, setUserAmount] = useState('');
 
   // Stock information from URL params
@@ -34,8 +36,15 @@ function PurchaseForm() {
   const walletAddress = (solanaWalletAccount as any)?.address || '';
 
   const handleFormSuccess = () => {
-    setShowSuccessMessage(true);
-    // Success message will remain visible until user navigates away
+    // Show success modal immediately
+    setShowSuccessModal(true);
+  };
+  
+  // Handle closing the success modal
+  const handleCloseSuccessModal = () => {
+    setShowSuccessModal(false);
+    // Don't show the success message again
+    setShowSuccessMessage(false);
   };
 
   // Listen for form submission success
@@ -75,8 +84,8 @@ function PurchaseForm() {
               </div>
             </div>
 
-            {/* Success Message */}
-            {isSuccess && (
+            {/* Success Message - Only show if showSuccessMessage is true */}
+            {isSuccess && showSuccessMessage && (
               <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-2xl animate-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center gap-3">
                   <CheckCircle className="h-6 w-6 text-green-400" />
@@ -103,96 +112,10 @@ function PurchaseForm() {
           />
         </div>
 
-        {/* Purchase Summary Card - Matching Stock Card Styling */}
-        <div className="max-w-4xl mx-auto">
-          <div className={`relative overflow-hidden rounded-2xl p-6 transition-all duration-300`}
-               style={{
-                 background: 'rgba(46, 71, 68, 0.7)',
-                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-                 backdropFilter: 'blur(10px)'
-               }}>
-            
-            {/* Content */}
-            <div className="relative z-10">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                       style={{ 
-                         background: 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
-                         boxShadow: '0 4px 15px rgba(217, 255, 102, 0.3)'
-                       }}>
-                    <DollarSign className="h-6 w-6" style={{ color: '#000000' }} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white text-lg">Transaction Summary</h3>
-                    <p className="text-gray-300 text-sm">Purchase Details</p>
-                  </div>
-                </div>
-                
-                {/* Status Badge */}
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full"
-                     style={{ backgroundColor: 'rgba(217, 255, 102, 0.1)', border: '1px solid rgba(217, 255, 102, 0.3)' }}>
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#D9FF66' }}></div>
-                  <span className="text-xs font-medium" style={{ color: '#D9FF66' }}>Ready</span>
-                </div>
-              </div>
-
-              {/* Transaction Details */}
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#4CAF50' }}></div>
-                    <span className="text-gray-300 text-sm">You are buying</span>
-                  </div>
-                  <span className="text-white font-medium">{stockSymbol || 'Stock'}</span>
-                </div>
-                
-                {userAmount && (
-                  <>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#8C66FF' }}></div>
-                        <span className="text-gray-300 text-sm">Amount in Leones</span>
-                      </div>
-                      <span className="text-white font-medium">{parseFloat(userAmount).toLocaleString()} SLL</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#4CAF50' }}></div>
-                        <span className="text-gray-300 text-sm">USD Equivalent</span>
-                      </div>
-                      <span className="text-green-400 font-medium">${usdEquivalent.toFixed(2)} USD</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#D9FF66' }}></div>
-                        <span className="text-gray-300 text-sm">Estimated Shares</span>
-                      </div>
-                      <span className="text-yellow-400 font-bold">{estimatedShares.toFixed(4)} shares</span>
-                    </div>
-                  </>
-                )}
-                
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: '#FF6B6B' }}></div>
-                    <span className="text-gray-300 text-sm">Will arrive in wallet</span>
-                  </div>
-                  <span className="text-white font-medium">1-2 hours</span>
-                </div>
-              </div>
-
-              {/* Important Notes */}
-              <div className="space-y-3">
-                {/* Removed the processing time and secure OTC transaction cards */}
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Success Modal */}
+        <SuccessImageModal isOpen={showSuccessModal} onClose={handleCloseSuccessModal} />
+        
+        {/* Transaction Summary section has been removed */}
       </div>
     </div>
   );
