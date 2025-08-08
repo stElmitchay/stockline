@@ -42,7 +42,7 @@ export function DisclosureModal({ isOpen, onAccept }: DisclosureModalProps) {
               <AlertTriangle className="h-5 w-5 text-yellow-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Important Disclosures</h2>
+              <h2 className="text-xl font-bold text-white">Disclaimer</h2>
               <p className="text-gray-400 text-sm">Please read and acknowledge before continuing</p>
             </div>
           </div>
@@ -52,7 +52,7 @@ export function DisclosureModal({ isOpen, onAccept }: DisclosureModalProps) {
         <div className="p-6 max-h-96 overflow-y-auto" onScroll={handleScroll}>
           <div className="text-white text-sm leading-relaxed space-y-4">
             <p>
-              Disclaimer: Stockline provides a platform to access tokenized U.S. equities. We are not a registered investment advisor or broker-dealer. All investment decisions are made at your own risk. Investing in securities involves risks, including the possible loss of the principal amount invested. The value of stocks can fluctuate, and past performance does not guarantee future returns. Stockline does not provide investment, tax, or legal advice.
+              Stockline provides a platform to access tokenized U.S. equities. We are not a registered investment advisor or broker-dealer. All investment decisions are made at your own risk. Investing in securities involves risks, including the possible loss of the principal amount invested. The value of stocks can fluctuate, and past performance does not guarantee future returns. Stockline does not provide investment, tax, or legal advice.
             </p>
           </div>
         </div>
