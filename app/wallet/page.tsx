@@ -652,16 +652,6 @@ export default function WalletPage() {
 
 	const handleCashoutFormSubmitted = (data: any) => {
 		setPendingCashoutData(data);
-
-		// If data is provided, it means a new cashout request was submitted
-		// If data is null, it means the transaction was completed or canceled
-		if (data) {
-			// We'll let the modal close with its success message
-			// Then reopen it after a short delay to show the transaction screen
-			setTimeout(() => {
-				setShowCashoutModal(true);
-			}, 3500); // Set slightly longer than the 3000ms in the CashoutModal
-		}
 	};
 
 	const handleCancelPendingTransaction = () => {

@@ -163,30 +163,24 @@ export function CashoutModal({
       if (onFormSubmitted) {
         onFormSubmitted(cashoutData);
       }
-      
-      // Close modal after 3 seconds and then open transaction modal
-      setTimeout(() => {
-        // Reset form state
-        setShowSuccessMessage(false);
-        setFormSubmitted(false);
-        setAmount("");
-        setEmail("");
-        setMobileNumber("");
-        setSelectedToken(null);
-        
-        // Close the current modal
-        onClose();
-        
-        // Immediately trigger the transaction modal to open
-        // This is done by the parent component since it controls the modal state
-        // The parent will detect pendingCashoutData and show the modal
-      }, 3000);
+      // Do not auto-close; let user dismiss success and return to wallet manually
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit cashout request');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseSuccessAndExit = () => {
+    // Reset local form state but keep parent's pending data
+    setShowSuccessMessage(false);
+    setFormSubmitted(false);
+    setAmount("");
+    setEmail("");
+    setMobileNumber("");
+    setSelectedToken(null);
+    onClose();
   };
 
   const handleCompleteTransaction = async () => {
@@ -469,12 +463,7 @@ export function CashoutModal({
     return !!pendingCashoutData || !!externalPendingData;
   }, [pendingCashoutData, externalPendingData]);
   
-  // If modal is opened with pending data, go straight to transaction
-  useEffect(() => {
-    if (isOpen && showTransactionScreen && !loading) {
-      handleCompleteTransaction();
-    }
-  }, [isOpen, showTransactionScreen]);
+  // Remove the auto-trigger useEffect - no longer auto-process transactions
 
   return (
     <Modal
@@ -522,6 +511,21 @@ export function CashoutModal({
                 <p className="text-lg">We have successfully received your cashout request.</p>
                 
                 <p className="text-sm">You will be contacted via phone call or WhatsApp to confirm and complete your transaction.</p>
+              </div>
+
+              <div className="pt-4">
+                <Button
+                  onClick={handleCloseSuccessAndExit}
+                  className="w-full font-medium py-3 rounded-lg transition-all duration-300"
+                  style={{
+                    background: 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
+                    color: '#000000',
+                    border: '1px solid rgba(217, 255, 102, 0.3)',
+                    boxShadow: '0 4px 15px rgba(217, 255, 102, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  }}
+                >
+                  Close
+                </Button>
               </div>
             </div>
           </div>
@@ -715,30 +719,58 @@ export function CashoutModal({
         )}
         
         {!showSuccessMessage && showTransactionScreen && (
-          // Transaction Processing View
+          // Transaction Confirmation View
           <div className="space-y-6">
+            <div className="text-center space-y-4 mb-6">
+              <h3 className="text-lg font-medium text-orange-400">Complete Your Transaction</h3>
+              <p className="text-sm text-gray-300">
+                Click the button below to sign and complete your cashout transaction.
+              </p>
+            </div>
+
             <div className="p-4 rounded-lg border border-orange-500/30"
                  style={{
                    background: 'rgba(234, 88, 12, 0.1)',
                    backdropFilter: 'blur(5px)'
                  }}>
               <div className="text-center space-y-4">
-                <h3 className="text-lg font-medium text-orange-400">Processing Transaction</h3>
+                <h3 className="text-lg font-medium text-orange-400">Transaction Details</h3>
                 <p className="text-sm text-gray-300">
-                  Your transaction is being processed. Please wait and do not close this window.
+                  Amount: {externalPendingData?.amount || pendingCashoutData?.amount} {externalPendingData?.selectedToken?.symbol || pendingCashoutData?.selectedToken?.symbol}
                 </p>
-                {loading && (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-400"></div>
-                  </div>
-                )}
-                {error && (
-                  <div className="text-red-400 text-sm mt-2">
-                    {error}
-                  </div>
-                )}
               </div>
             </div>
+
+            <Button
+              onClick={handleCompleteTransaction}
+              disabled={loading}
+              className="w-full font-medium py-3 rounded-lg transition-all duration-300"
+              style={{
+                background: loading 
+                  ? 'linear-gradient(135deg, rgba(217, 255, 102, 0.6) 0%, rgba(184, 230, 46, 0.6) 100%)'
+                  : 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
+                color: '#000000',
+                border: '1px solid rgba(217, 255, 102, 0.3)',
+                boxShadow: '0 4px 15px rgba(217, 255, 102, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              }}
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
+                  Processing...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  Confirm & Sign Transaction
+                </div>
+              )}
+            </Button>
+
+            {error && (
+              <div className="text-red-400 text-sm mt-2 text-center">
+                {error}
+              </div>
+            )}
           </div>
         )}
       </div>
