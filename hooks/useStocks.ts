@@ -55,13 +55,21 @@ export const useStocks = (): UseStocksReturn => {
     price: 0,
     marketCap: 0,
     volume24h: 0,
-    change24h: 0
+    change24h: 0,
+    isAvailable: stock.isAvailable ?? false
   }));
 
   // Initialize with static data to ensure we always have something to display
   useEffect(() => {
-    // Set initial data from JSON
-    setStocks(xStocksData);
+    // Set initial data from JSON, prioritizing available stocks
+    const sortedStocks = [...xStocksData].sort((a, b) => {
+      // Available stocks first
+      if (a.isAvailable && !b.isAvailable) return -1;
+      if (!a.isAvailable && b.isAvailable) return 1;
+      // Then by name for consistency
+      return a.name.localeCompare(b.name);
+    });
+    setStocks(sortedStocks);
   }, []);
 
   // Function to fetch live data with progressive loading
@@ -71,20 +79,38 @@ export const useStocks = (): UseStocksReturn => {
       setIsLoading(true);
       setFetchError(null);
       
-      // Get all token addresses
-      const tokenAddresses = xStocksData.map(stock => stock.solanaAddress);
+      // Get token addresses, prioritizing available stocks
+      // This ensures the first 10 tokens (first 2 batches of 5) are the available stocks
+      const availableStocks = xStocksData.filter(stock => stock.isAvailable);
+      const unavailableStocks = xStocksData.filter(stock => !stock.isAvailable);
       
-      if (tokenAddresses.length === 0) {
+      // Fetch available stocks first, then unavailable stocks
+      // This order is important for batch processing (batches of 5)
+      const prioritizedTokenAddresses = [
+        ...availableStocks.map(stock => stock.solanaAddress),
+        ...unavailableStocks.map(stock => stock.solanaAddress)
+      ];
+      
+      if (prioritizedTokenAddresses.length === 0) {
         throw new Error('No token addresses found');
       }
       
       // Log addresses for debugging
-      console.log(`Found ${tokenAddresses.length} token addresses to fetch`);
-      console.log('Token addresses:', tokenAddresses);
+      console.log(`Found ${prioritizedTokenAddresses.length} token addresses to fetch`);
+      console.log(`Available stocks: ${availableStocks.length}, Unavailable stocks: ${unavailableStocks.length}`);
+      console.log(`First 10 tokens (first 2 batches) will be available stocks: ${availableStocks.map(s => s.symbol).join(', ')}`);
       
       // Use progressive loading function that updates stocks as data becomes available
-      await fetchMultipleTokensDataProgressive(tokenAddresses, (updatedStocks) => {
-        setStocks(updatedStocks);
+      await fetchMultipleTokensDataProgressive(prioritizedTokenAddresses, (updatedStocks) => {
+        // Maintain the priority order when updating
+        const sortedUpdatedStocks = updatedStocks.sort((a, b) => {
+          // Available stocks first
+          if (a.isAvailable && !b.isAvailable) return -1;
+          if (!a.isAvailable && b.isAvailable) return 1;
+          // Then by name for consistency
+          return a.name.localeCompare(b.name);
+        });
+        setStocks(sortedUpdatedStocks);
       });
       
       setFetchError(null);
@@ -94,7 +120,12 @@ export const useStocks = (): UseStocksReturn => {
       setFetchError(`Failed to fetch live data: ${errorMessage}`);
       // Ensure we have data to display even if fetch fails
       if (stocks.length === 0) {
-        setStocks(xStocksData);
+        const sortedStocks = [...xStocksData].sort((a, b) => {
+          if (a.isAvailable && !b.isAvailable) return -1;
+          if (!a.isAvailable && b.isAvailable) return 1;
+          return a.name.localeCompare(b.name);
+        });
+        setStocks(sortedStocks);
       }
     } finally {
       setIsLoading(false);
@@ -115,8 +146,14 @@ export const useStocks = (): UseStocksReturn => {
       setSessionInitialized();
       
       // First, try to warm up cache with all token addresses
-      const tokenAddresses = xStocksData.map(stock => stock.solanaAddress);
-      warmUpCache(tokenAddresses).then(() => {
+      // Use the same prioritized order as live data fetching
+      const availableStocks = xStocksData.filter(stock => stock.isAvailable);
+      const unavailableStocks = xStocksData.filter(stock => !stock.isAvailable);
+      const prioritizedTokenAddresses = [
+        ...availableStocks.map(stock => stock.solanaAddress),
+        ...unavailableStocks.map(stock => stock.solanaAddress)
+      ];
+      warmUpCache(prioritizedTokenAddresses).then(() => {
         // Prefetch wallet data in the background if user has a Solana wallet
         if (typeof window !== 'undefined') {
           const privyUser = JSON.parse(localStorage.getItem('privy:user') || '{}');
@@ -169,8 +206,13 @@ export const useStocks = (): UseStocksReturn => {
       stock.symbol.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Sort stocks
+    // Sort stocks - always prioritize available stocks first
     filtered.sort((a, b) => {
+      // First, prioritize available stocks
+      if (a.isAvailable && !b.isAvailable) return -1;
+      if (!a.isAvailable && b.isAvailable) return 1;
+      
+      // Then apply the selected sort criteria
       switch (sortBy) {
         case 'alphabetical':
           return a.name.localeCompare(b.name);

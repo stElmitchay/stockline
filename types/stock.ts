@@ -8,6 +8,7 @@ export interface Stock {
   volume24h?: number;
   logoUrl?: string;
   solscanUrl?: string;
+  isAvailable?: boolean;
 }
 
 export interface StockData {

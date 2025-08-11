@@ -570,6 +570,8 @@ export async function fetchMultipleTokensDataProgressive(
 ) {
   try {
     // Filter out valid addresses
+    // Note: tokenAddresses should be ordered with available stocks first (first 10 tokens)
+    // This ensures the first 2 batches (of 5 tokens each) contain the available stocks
     const validAddresses = tokenAddresses.filter(address => 
       address && typeof address === 'string' && address.trim() !== ''
     );

@@ -71,8 +71,10 @@ export default function StockPurchaseForm({
     confirmationManualProcess: false // "this transaction is process manually..."
   });
   
-  // Calculate USD equivalent
-  const usdEquivalent = formData.amountInLeones ? (parseFloat(formData.amountInLeones) / USD_TO_SLL_RATE) : 0;
+  // Calculate transaction fee and USD equivalent
+  const transactionFee = formData.amountInLeones ? (parseFloat(formData.amountInLeones) * 0.01) : 0;
+  const amountAfterFee = formData.amountInLeones ? (parseFloat(formData.amountInLeones) - transactionFee) : 0;
+  const usdEquivalent = amountAfterFee > 0 ? (amountAfterFee / USD_TO_SLL_RATE) : 0;
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -113,7 +115,9 @@ export default function StockPurchaseForm({
 
   const generateReceiptData = () => {
     const timestamp = new Date().toLocaleString();
-    const usdEquivalent = parseFloat(formData.amountInLeones) / USD_TO_SLL_RATE;
+    const transactionFee = parseFloat(formData.amountInLeones) * 0.01;
+    const amountAfterFee = parseFloat(formData.amountInLeones) - transactionFee;
+    const usdEquivalent = amountAfterFee / USD_TO_SLL_RATE;
     
     return {
       timestamp,
@@ -121,6 +125,8 @@ export default function StockPurchaseForm({
       stockName,
       stockPrice,
       amountInLeones: formData.amountInLeones,
+      transactionFee: transactionFee.toFixed(2),
+      amountAfterFee: amountAfterFee.toFixed(2),
       usdEquivalent: usdEquivalent.toFixed(2),
       mobileNumber: formData.mobileNumber,
       walletAddress: formData.walletAddress,
@@ -263,6 +269,8 @@ export default function StockPurchaseForm({
         ['📦 Item:', receiptData.stockName],
         ['💰 Price:', `$${receiptData.usdEquivalent}`],
         ['💵 Amount (SLL):', `${parseFloat(receiptData.amountInLeones).toLocaleString()} SLL`],
+        ['💸 Fee (1%):', `-${parseFloat(receiptData.transactionFee).toFixed(2)} SLL`],
+        ['✅ After Fee:', `${parseFloat(receiptData.amountAfterFee).toFixed(2)} SLL`],
         ['📅 Date:', new Date(receiptData.timestamp).toLocaleDateString()],
         ['📱 Mobile:', receiptData.mobileNumber],
         ['👛 Wallet:', `${receiptData.walletAddress.slice(0, 8)}...${receiptData.walletAddress.slice(-8)}`]
@@ -470,6 +478,16 @@ export default function StockPurchaseForm({
               </div>
               
               <div className="flex justify-between items-center">
+                <span className="text-gray-300">Transaction Fee (1%)</span>
+                <span className="text-orange-400 font-medium">-{parseFloat(receiptData.transactionFee).toFixed(2)} SLL</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Amount After Fee</span>
+                <span className="text-white font-medium">{parseFloat(receiptData.amountAfterFee).toFixed(2)} SLL</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
                 <span className="text-gray-300">Date</span>
                 <span className="text-white font-medium">{new Date(receiptData.timestamp).toLocaleDateString()}</span>
               </div>
@@ -633,6 +651,10 @@ export default function StockPurchaseForm({
               placeholder="Enter amount in Leones"
               required
             />
+            <p className="text-xs text-orange-400 mt-2 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              1% transaction fee will be applied.
+            </p>
           </div>
 
            {/* Transaction Summary - Only show when amount field is focused */}
@@ -649,6 +671,14 @@ export default function StockPurchaseForm({
                    <span className="text-sm text-white font-medium">{parseFloat(formData.amountInLeones).toLocaleString()} SLL</span>
                  </div>
                  <div className="flex justify-between items-center">
+                   <span className="text-sm text-gray-400">Transaction Fee (1%):</span>
+                   <span className="text-sm text-orange-400 font-medium">-{transactionFee.toFixed(2)} SLL</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-gray-400">Amount After Fee:</span>
+                   <span className="text-sm text-white font-medium">{amountAfterFee.toFixed(2)} SLL</span>
+                 </div>
+                 <div className="flex justify-between items-center">
                    <span className="text-sm text-gray-400">USD Equivalent:</span>
                    <span className="text-sm text-green-400 font-medium">${usdEquivalent.toFixed(2)} USD</span>
                  </div>
@@ -656,7 +686,6 @@ export default function StockPurchaseForm({
                    <span className="text-sm text-gray-400">Stock Price:</span>
                    <span className="text-sm text-white font-medium">${stockPrice} USD</span>
                  </div>
-
                </div>
              </div>
            )}

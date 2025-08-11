@@ -19,6 +19,7 @@ export function StockCard({ stock }: StockCardProps) {
   // Check if this stock has been loaded (has a valid price)
   const isLoaded = (stock.price ?? 0) > 0;
   const isPositive = (stock.change24h ?? 0) >= 0;
+  const isAvailable = stock.isAvailable ?? false;
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -225,21 +226,38 @@ export function StockCard({ stock }: StockCardProps) {
 
         {/* Action Buttons */}
         <div className="space-y-2">
-          <Link href={`/purchase?symbol=${stock.symbol}&name=${encodeURIComponent(stock.name)}&price=${stock.price}`} className="block">
+          {isAvailable ? (
+            <Link href={`/purchase?symbol=${stock.symbol}&name=${encodeURIComponent(stock.name)}&price=${stock.price}`} className="block">
+              <Button 
+                size="sm" 
+                className="w-full font-semibold"
+                style={{
+                  background: isLoaded ? '#D9FF66' : '#4A5568',
+                  border: 'none',
+                  color: isLoaded ? '#000000' : '#9CA3AF'
+                }}
+                disabled={!isLoaded}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                {isLoaded ? 'Order Now' : 'Loading...'}
+              </Button>
+            </Link>
+          ) : (
             <Button 
               size="sm" 
               className="w-full font-semibold"
               style={{
-                background: isLoaded ? '#D9FF66' : '#4A5568',
+                background: '#4A5568',
                 border: 'none',
-                color: isLoaded ? '#000000' : '#9CA3AF'
+                color: '#9CA3AF',
+                cursor: 'not-allowed'
               }}
-              disabled={!isLoaded}
+              disabled={true}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
-              {isLoaded ? 'Order Now' : 'Loading...'}
+              Coming Soon
             </Button>
-          </Link>
+          )}
           <Button 
             size="sm" 
             variant="outline"
