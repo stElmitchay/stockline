@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { TrendingUp, TrendingDown, Copy, ExternalLink, Eye, ShoppingCart, Loader2, ArrowUp, ArrowDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Copy, ExternalLink, Eye, ShoppingCart, Loader2, ArrowUp, ArrowDown, Bell } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Stock } from "@/types/stock";
 import { formatPrice, formatMarketCap, formatVolume, formatAddress } from "@/utils/formatters";
 import { API_CONFIG, EXTERNAL_URLS } from "@/constants";
+import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 
 interface StockCardProps {
@@ -15,11 +16,63 @@ interface StockCardProps {
 
 export function StockCard({ stock }: StockCardProps) {
   const [copied, setCopied] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
+  const [notificationSent, setNotificationSent] = useState(false);
+  const { user, authenticated, login } = usePrivy();
 
   // Check if this stock has been loaded (has a valid price)
   const isLoaded = (stock.price ?? 0) > 0;
   const isPositive = (stock.change24h ?? 0) >= 0;
   const isAvailable = stock.isAvailable ?? false;
+
+  // Handle notify me functionality
+  const handleNotifyMe = async () => {
+    if (!authenticated) {
+      // If user is not authenticated, prompt them to login
+      login();
+      return;
+    }
+
+    // Get user email and wallet address
+    const userEmail = user?.email?.address;
+    const solanaWalletAccount = user?.linkedAccounts?.find(
+      (account) => account.type === "wallet" && account.chainType === "solana"
+    );
+    const walletAddress = (solanaWalletAccount as any)?.address;
+
+    if (!userEmail || !walletAddress) {
+      alert('Please ensure you have an email and connected wallet to receive notifications.');
+      return;
+    }
+
+    setIsNotifying(true);
+
+    try {
+      const response = await fetch('/api/airtable/submit-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          walletAddress: walletAddress,
+          stockTicker: stock.symbol
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit notification request');
+      }
+
+      setNotificationSent(true);
+    } catch (error) {
+      console.error('Error submitting notification:', error);
+      alert('Failed to submit notification request. Please try again.');
+    } finally {
+      setIsNotifying(false);
+    }
+  };
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -227,49 +280,82 @@ export function StockCard({ stock }: StockCardProps) {
         {/* Action Buttons */}
         <div className="space-y-2">
           {isAvailable ? (
-            <Link href={`/purchase?symbol=${stock.symbol}&name=${encodeURIComponent(stock.name)}&price=${stock.price}`} className="block">
+            <>
+              <Link href={`/purchase?symbol=${stock.symbol}&name=${encodeURIComponent(stock.name)}&price=${stock.price}`} className="block">
+                <Button 
+                  size="sm" 
+                  className="w-full font-semibold"
+                  style={{
+                    background: isLoaded ? '#D9FF66' : '#4A5568',
+                    border: 'none',
+                    color: isLoaded ? '#000000' : '#9CA3AF'
+                  }}
+                  disabled={!isLoaded}
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  {isLoaded ? 'Order Now' : 'Loading...'}
+                </Button>
+              </Link>
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+                onClick={() => {
+                  const solscanUrl = stock.solscanUrl || `${EXTERNAL_URLS.SOLSCAN_BASE}${stock.solanaAddress}`;
+                  window.open(solscanUrl, '_blank');
+                }}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View Details
+              </Button>
+            </>
+          ) : (
+            <>
               <Button 
                 size="sm" 
                 className="w-full font-semibold"
                 style={{
-                  background: isLoaded ? '#D9FF66' : '#4A5568',
+                  background: '#4A5568',
                   border: 'none',
-                  color: isLoaded ? '#000000' : '#9CA3AF'
+                  color: '#9CA3AF',
+                  cursor: 'not-allowed'
                 }}
-                disabled={!isLoaded}
+                disabled={true}
               >
                 <ShoppingCart className="h-4 w-4 mr-2" />
-                {isLoaded ? 'Order Now' : 'Loading...'}
+                Coming Soon
               </Button>
-            </Link>
-          ) : (
-            <Button 
-              size="sm" 
-              className="w-full font-semibold"
-              style={{
-                background: '#4A5568',
-                border: 'none',
-                color: '#9CA3AF',
-                cursor: 'not-allowed'
-              }}
-              disabled={true}
-            >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Coming Soon
-            </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+                onClick={handleNotifyMe}
+                disabled={isNotifying || notificationSent}
+                style={{
+                  background: notificationSent ? '#4CAF50' : undefined,
+                  borderColor: notificationSent ? '#4CAF50' : undefined,
+                  color: notificationSent ? '#FFFFFF' : undefined
+                }}
+              >
+                {isNotifying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : notificationSent ? (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Notification Sent
+                  </>
+                ) : (
+                  <>
+                    <Bell className="h-4 w-4 mr-2" />
+                    Notify Me
+                  </>
+                )}
+              </Button>
+            </>
           )}
-          <Button 
-            size="sm" 
-            variant="outline"
-            className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
-            onClick={() => {
-              const solscanUrl = stock.solscanUrl || `${EXTERNAL_URLS.SOLSCAN_BASE}${stock.solanaAddress}`;
-              window.open(solscanUrl, '_blank');
-            }}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            View Details
-          </Button>
         </div>
       </div>
     </div>
