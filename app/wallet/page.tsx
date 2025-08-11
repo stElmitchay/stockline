@@ -728,7 +728,7 @@ export default function WalletPage() {
 				<div className="max-w-4xl mx-auto mb-6">
 					<div className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-2xl"
 						style={{
-							background: '#1A1A1A',
+							background: '#2A2A2A',
 							border: '1px solid rgba(255, 255, 255, 0.1)',
 							boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
 						}}>
@@ -787,7 +787,7 @@ export default function WalletPage() {
 							{[...Array(3)].map((_, i) => (
 								<div key={i} className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
 									style={{
-										background: '#1A1A1A',
+										background: '#2A2A2A',
 										border: '1px solid rgba(255, 255, 255, 0.1)',
 										boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
 									}}>
@@ -812,7 +812,7 @@ export default function WalletPage() {
 					) : error ? (
 						<div className="relative overflow-hidden rounded-2xl p-6 text-center"
 							style={{
-								background: '#1A1A1A',
+								background: '#2A2A2A',
 								border: '1px solid rgba(255, 255, 255, 0.1)',
 								boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
 							}}>
@@ -831,7 +831,7 @@ export default function WalletPage() {
 								tokens.map((token, index) => (
 								<div key={index} className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
 									style={{
-										background: '#1A1A1A',
+										background: '#2A2A2A',
 										border: '1px solid rgba(255, 255, 255, 0.1)',
 										boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
 									}}>
