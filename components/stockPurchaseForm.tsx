@@ -22,7 +22,7 @@ export default function StockPurchaseForm({
   onSuccess,
   onAmountChange 
 }: StockPurchaseFormProps) {
-  const { user } = usePrivy();
+  const { user, login } = usePrivy();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -559,6 +559,13 @@ export default function StockPurchaseForm({
       </div>
     );
   }
+
+  // Auto-trigger login modal for unauthenticated users
+  useEffect(() => {
+    if (!user) {
+      login();
+    }
+  }, [user]);
 
   // Check if user is authenticated
   if (!user) {

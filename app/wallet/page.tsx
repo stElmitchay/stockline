@@ -54,6 +54,7 @@ export default function WalletPage() {
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [refreshing, setRefreshing] = useState(false);
 
 	const [copied, setCopied] = useState(false);
 	const [showCashoutModal, setShowCashoutModal] = useState(false);
@@ -320,9 +321,6 @@ export default function WalletPage() {
 
 	const fetchWalletDataCached = async () => {
 		try {
-			setLoading(true);
-			setError(null);
-
 			// Try to get cached data first using the utility function
 			const cachedData = getCachedWalletData(solanaWallet!.address);
 			console.log('🔍 Checking for cached wallet data:', {
@@ -332,57 +330,68 @@ export default function WalletPage() {
 			});
 			
 			if (cachedData) {
-				console.log('✅ Using cached wallet data:', cachedData);
-				// Use cached data but fetch fresh SOL balance
-				const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
-				const connection = new Connection(rpcUrl as string);
-				const publicKey = new PublicKey(solanaWallet!.address);
-				
-				try {
-					const solBalance = await connection.getBalance(publicKey);
-					setBalance(solBalance / LAMPORTS_PER_SOL);
-				} catch (balanceError) {
-					// Use cached balance if fresh fetch fails
+					console.log('✅ Using cached wallet data immediately:', cachedData);
+					// Set cached data immediately to eliminate loading screen
 					setBalance(cachedData.balance);
-				}
-				
-				// Update token prices from cache or fetch fresh
-				const tokenMints = cachedData.tokens.map(token => token.mint);
-				if (!tokenMints.includes('So11111111111111111111111111111111111111112')) {
-					tokenMints.push('So11111111111111111111111111111111111111112');
-				}
-				
-				try {
-					const tokenPrices = await fetchTokenPrices(tokenMints);
-					const tokensWithUpdatedPrices = cachedData.tokens.map(token => ({
-						...token,
-						price: tokenPrices[token.mint] || token.price || 0
-					}));
-					setTokens(tokensWithUpdatedPrices);
-				} catch (priceError) {
-					// Use cached prices if fresh fetch fails
 					setTokens(cachedData.tokens);
+					setTransactions([]); // Skip transactions for faster loading
+					setLoading(false); // Remove loading state immediately
+					setError(null);
+					
+					// Then update with fresh data in the background
+					setRefreshing(true);
+					const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+					const connection = new Connection(rpcUrl as string);
+					const publicKey = new PublicKey(solanaWallet!.address);
+					
+					// Update SOL balance in background
+					connection.getBalance(publicKey).then(solBalance => {
+						setBalance(solBalance / LAMPORTS_PER_SOL);
+					}).catch(() => {
+						// Keep cached balance if fresh fetch fails
+					});
+					
+					// Update token prices in background
+					const tokenMints = cachedData.tokens.map(token => token.mint);
+					if (!tokenMints.includes('So11111111111111111111111111111111111111112')) {
+						tokenMints.push('So11111111111111111111111111111111111111112');
+					}
+					
+					fetchTokenPrices(tokenMints).then(tokenPrices => {
+						const tokensWithUpdatedPrices = cachedData.tokens.map(token => ({
+							...token,
+							price: tokenPrices[token.mint] || token.price || 0
+						}));
+						setTokens(tokensWithUpdatedPrices);
+					}).catch(() => {
+						// Keep cached prices if fresh fetch fails
+					}).finally(() => {
+						setRefreshing(false);
+					});
+					
+					return;
 				}
-				
-				// For transactions, we'll skip them in cached mode to make it faster
-				// They will be loaded when the user does a full refresh
-				setTransactions([]);
-				setLoading(false);
-				return;
-			}
 			
-			// If no valid cache, fall back to full fetch
+			// If no valid cache, show loading and fetch fresh data
+			setLoading(true);
+			setError(null);
 			await fetchWalletData();
 		} catch (error) {
 			console.error('Error in fetchWalletDataCached:', error);
 			// Fall back to regular fetch on any error
+			setLoading(true);
+			setError(null);
 			await fetchWalletData();
 		}
 	};
 
-	const fetchWalletData = async () => {
+	const fetchWalletData = async (showLoading = true) => {
 		try {
-			setLoading(true);
+			if (showLoading) {
+				setLoading(true);
+			} else {
+				setRefreshing(true);
+			}
 			setError(null);
 
 			const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
@@ -580,6 +589,7 @@ export default function WalletPage() {
 			setError("Failed to fetch wallet data: " + (err as Error).message);
 		} finally {
 			setLoading(false);
+			setRefreshing(false);
 		}
 	};
 
@@ -640,15 +650,7 @@ export default function WalletPage() {
 		return new Date(timestamp * 1000).toLocaleDateString();
 	};
 
-	const copyToClipboard = async () => {
-		try {
-			await navigator.clipboard.writeText(solanaWallet.address);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch (err) {
-			console.error('Failed to copy:', err);
-		}
-	};
+
 
 	const handleCashoutFormSubmitted = (data: any) => {
 		setPendingCashoutData(data);
@@ -717,8 +719,40 @@ export default function WalletPage() {
 								<ArrowLeft className="h-5 w-5 text-white" />
 							</Link>
 							<div className="flex-1">
-								<h1 className="text-3xl font-bold text-gray-100 mb-2">Portfolio</h1>
+								<div className="flex items-center gap-3">
+									<h1 className="text-3xl font-bold text-gray-100 mb-2">Portfolio</h1>
+									{refreshing && (
+										<div className="flex items-center gap-2 text-sm text-blue-400">
+											<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+											<span>Updating...</span>
+										</div>
+									)}
+								</div>
 								<p className="text-gray-400">Manage your investments</p>
+							</div>
+							<div className="flex items-center gap-3">
+								<button
+									onClick={() => fetchWalletData(false)}
+									className="flex items-center gap-2 px-3 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+									disabled={refreshing}
+									title="Refresh wallet data and load recent transactions"
+								>
+									<TrendingUp className="w-4 h-4" />
+									<span className="text-sm">Refresh</span>
+								</button>
+								<button
+								onClick={() => {
+									navigator.clipboard.writeText(solanaWallet.address);
+									setCopied(true);
+									setTimeout(() => setCopied(false), 2000);
+								}}
+								className="flex items-center gap-2 px-3 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+							>
+								{copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+								<span className="text-sm">
+									{copied ? 'Copied!' : `${solanaWallet.address.slice(0, 6)}...${solanaWallet.address.slice(-4)}`}
+								</span>
+							</button>
 							</div>
 						</div>
 					</div>
@@ -818,7 +852,7 @@ export default function WalletPage() {
 							}}>
 							<p className="text-red-400 mb-4">{error}</p>
 							<button
-								onClick={fetchWalletData}
+								onClick={() => fetchWalletData(true)}
 								className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
 							>
 								Retry

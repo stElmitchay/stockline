@@ -367,18 +367,24 @@ export async function fetchTokenData(tokenAddress: string) {
       }
     }
     
-    // If no valid price found, mark as failed and return zero data
+    // If no valid price found, mark as failed and try to use cached data as fallback
     console.warn(`No valid price found for ${tokenAddress}, marking as failed fetch`);
     markFetchAsFailed(tokenAddress);
+    
+    // Try to get the last cached price as fallback
+    const cachedData = tokenPriceCache.get(tokenAddress);
+    const fallbackPrice = cachedData?.price || 0;
+    
+    console.log(`Using ${cachedData?.price ? 'last cached' : 'default'} fallback price: $${fallbackPrice} for ${tokenAddress}`);
     
     // Save to localStorage
     saveCacheToStorage();
     
     return {
-      price: 0,
-      marketCap: 0,
-      volume24h: 0,
-      change24h: 0
+      price: fallbackPrice,
+      marketCap: cachedData?.marketCap || 0,
+      volume24h: cachedData?.volume24h || 0,
+      change24h: cachedData?.change24h || 0
     };
   } catch (error) {
     console.error(`Error fetching data for token ${tokenAddress}:`, error);
@@ -386,14 +392,20 @@ export async function fetchTokenData(tokenAddress: string) {
     // Mark as failed fetch
     markFetchAsFailed(tokenAddress);
     
+    // Try to get the last cached price as fallback
+    const cachedData = tokenPriceCache.get(tokenAddress);
+    const fallbackPrice = cachedData?.price || 0;
+    
+    console.log(`Using ${cachedData?.price ? 'last cached' : 'default'} fallback price: $${fallbackPrice} for ${tokenAddress}`);
+    
     // Save to localStorage
     saveCacheToStorage();
     
     return {
-      price: 0,
-      marketCap: 0,
-      volume24h: 0,
-      change24h: 0
+      price: fallbackPrice,
+      marketCap: cachedData?.marketCap || 0,
+      volume24h: cachedData?.volume24h || 0,
+      change24h: cachedData?.change24h || 0
     };
   }
 }
@@ -489,24 +501,34 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
               } else {
                 // Mark as failed fetch for tokens without valid prices
                 markFetchAsFailed(address);
+                
+                // Try to get the last cached price as fallback
+                const cachedData = tokenPriceCache.get(address);
+                const fallbackPrice = cachedData?.price || 0;
+                
                 dataMap.set(address, {
-                  price: 0,
-                  marketCap: 0,
-                  volume24h: 0,
-                  change24h: 0
+                  price: fallbackPrice,
+                  marketCap: cachedData?.marketCap || 0,
+                  volume24h: cachedData?.volume24h || 0,
+                  change24h: cachedData?.change24h || 0
                 });
-                console.log(`⚠️ Failed: ${address} - No valid price`);
+                console.log(`⚠️ Failed: ${address} - No valid price, using ${cachedData?.price ? 'cached' : 'default'} fallback: $${fallbackPrice}`);
               }
             } else {
               // Mark as failed fetch for tokens not in response
               markFetchAsFailed(address);
+              
+              // Try to get the last cached price as fallback
+              const cachedData = tokenPriceCache.get(address);
+              const fallbackPrice = cachedData?.price || 0;
+              
               dataMap.set(address, {
-                price: 0,
-                marketCap: 0,
-                volume24h: 0,
-                change24h: 0
+                price: fallbackPrice,
+                marketCap: cachedData?.marketCap || 0,
+                volume24h: cachedData?.volume24h || 0,
+                change24h: cachedData?.change24h || 0
               });
-              console.log(`⚠️ Failed: ${address} - Not in response`);
+              console.log(`⚠️ Failed: ${address} - Not in response, using ${cachedData?.price ? 'cached' : 'default'} fallback: $${fallbackPrice}`);
             }
           }
           
@@ -535,12 +557,18 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
                 } catch (individualError) {
                   console.error(`Failed to fetch ${address}:`, individualError);
                   markFetchAsFailed(address);
+                  
+                  // Try to get the last cached price as fallback
+                  const cachedData = tokenPriceCache.get(address);
+                  const fallbackPrice = cachedData?.price || 0;
+                  
                   dataMap.set(address, {
-                    price: 0,
-                    marketCap: 0,
-                    volume24h: 0,
-                    change24h: 0
+                    price: fallbackPrice,
+                    marketCap: cachedData?.marketCap || 0,
+                    volume24h: cachedData?.volume24h || 0,
+                    change24h: cachedData?.change24h || 0
                   });
+                  console.log(`Individual fetch failed for ${address}, using ${cachedData?.price ? 'cached' : 'default'} fallback: $${fallbackPrice}`);
                 }
               }
             }
