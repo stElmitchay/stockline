@@ -930,7 +930,7 @@ export default function StockPurchaseForm({
                 <Button
                   type="button"
                   onClick={handleCopyUSSD}
-                  className="shrink-0 h-10 px-4 bg-orange-600 hover:bg-orange-700 text-white font-medium"
+                  className="shrink-0 h-10 px-4 bg-orange-600 text-white font-medium"
                 >
                   {copySuccess ? (
                     <>
@@ -966,7 +966,7 @@ export default function StockPurchaseForm({
               <Button
                 type="button"
                 onClick={() => setShowUSSDModal(false)}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white"
+                className="flex-1 bg-gray-700 text-white"
               >
                 Close
               </Button>
@@ -976,7 +976,7 @@ export default function StockPurchaseForm({
                   handleCopyUSSD();
                   setShowUSSDModal(false);
                 }}
-                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                className="flex-1 bg-orange-600 text-white"
               >
                 Copy & Close
               </Button>

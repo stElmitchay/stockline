@@ -35,7 +35,7 @@ export default function Navigation() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="text-gray-300 border-gray-600 hover:bg-gray-700/50 p-2"
+                    className="text-gray-300 border-gray-600 p-2"
                     title="Wallet"
                     onMouseEnter={() => {
                       // Trigger wallet prefetch on hover for instant loading
@@ -59,7 +59,7 @@ export default function Navigation() {
                   onClick={logout} 
                   variant="outline" 
                   size="sm"
-                  className="text-gray-300 border-gray-600 hover:bg-gray-700/50 p-2"
+                  className="text-gray-300 border-gray-600 p-2"
                   title="Logout"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

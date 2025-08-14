@@ -36,7 +36,7 @@ export function StockFilters({
               className={`text-xs px-2 py-1 h-7 ${
                 sortBy === option.value 
                   ? 'text-black' 
-                  : 'text-gray-300 border-gray-600 hover:bg-gray-700'
+                  : 'text-gray-300 border-gray-600'
               }`}
               style={{
                 backgroundColor: sortBy === option.value ? '#D9FF66' : '#1A1A1A'
@@ -55,7 +55,7 @@ export function StockFilters({
             size="sm"
             variant="outline"
             onClick={onRefresh}
-            className="text-xs px-3 py-1.5 h-8 text-gray-300 hover:text-white"
+            className="text-xs px-3 py-1.5 h-8 text-gray-300"
             style={{
               backgroundColor: 'transparent',
               border: '1px solid #D9FF66',
