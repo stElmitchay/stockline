@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
     const confirmation2 = formData.get('confirmation2') === 'true';
     const confirmationManualProcess = formData.get('confirmationManualProcess') === 'true';
     const transactionType = formData.get('transactionType') as string || 'CashIn'; // Default to CashIn for purchases
+    const isFirstTimePurchase = formData.get('isFirstTimePurchase') === 'true';
+    const onboardingFeeInLeones = formData.get('onboardingFeeInLeones') ? parseFloat(formData.get('onboardingFeeInLeones') as string) : 0;
+    const totalFees = formData.get('totalFees') ? parseFloat(formData.get('totalFees') as string) : 0;
 
     // Validate required fields
     if (!email || !mobileNumber || !amountInLeones || !stockTicker || !walletAddress) {
@@ -74,11 +77,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Calculate the total amount including fees
+    const originalAmount = parseFloat(amountInLeones);
+    const totalAmountWithFees = originalAmount + totalFees;
+
     // Prepare Airtable fields
     const airtableFields: Record<string, any> = {
       'Email': email,
       'Mobile Number': mobileNumber,
-      'Amount in Leones': parseFloat(amountInLeones),
+      'Amount in Leones': totalAmountWithFees, // Store total amount including all fees
       'Stock Ticker': stockTicker,
       'Wallet Address': walletAddress,
       'Confirmation 1': confirmation1,
@@ -86,7 +93,13 @@ export async function POST(request: NextRequest) {
       'this transaction is process manually, may take a few hours, and the final stock price can vary slightly from the estimate.': confirmationManualProcess,
       'Status': 'Todo', // Set default status to match Airtable options
       'Transaction Type': transactionType, // Add transaction type field
+      'Subscription Fee': isFirstTimePurchase, // Mark as true if user paid onboarding fee
     };
+
+    // Add onboarding fee information if applicable
+    if (isFirstTimePurchase && onboardingFeeInLeones > 0) {
+      airtableFields['Notes'] = `First-time purchase with $5 onboarding fee (${onboardingFeeInLeones.toFixed(2)} SLL). Original amount: ${originalAmount.toFixed(2)} SLL, Total fees: ${totalFees.toFixed(2)} SLL`;
+    }
 
     // Handle file upload if present
     if (paymentReceipt && paymentReceipt.size > 0) {

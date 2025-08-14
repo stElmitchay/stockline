@@ -31,6 +31,8 @@ export default function StockPurchaseForm({
   const [showUSSDModal, setShowUSSDModal] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
   const [stockLogoUrl, setStockLogoUrl] = useState<string | null>(null);
+  const [isFirstTimePurchase, setIsFirstTimePurchase] = useState<boolean>(true);
+  const [checkingPurchaseHistory, setCheckingPurchaseHistory] = useState<boolean>(false);
   const receiptRef = useRef<HTMLDivElement>(null);
   
   // Find stock logo URL from stocks data
@@ -46,6 +48,34 @@ export default function StockPurchaseForm({
   );
   const walletAddress = (solanaWalletAccount as any)?.address || '';
   
+  // Check if user has made previous purchases
+  const checkPurchaseHistory = async (email: string) => {
+    if (!email) return;
+    
+    setCheckingPurchaseHistory(true);
+    try {
+      const response = await fetch('/api/airtable/check-purchase-history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // User is first-time if they haven't paid subscription fee yet
+        setIsFirstTimePurchase(!data.hasSubscriptionFee);
+      }
+    } catch (error) {
+      console.error('Error checking purchase history:', error);
+      // Default to first-time purchase if check fails
+      setIsFirstTimePurchase(true);
+    } finally {
+      setCheckingPurchaseHistory(false);
+    }
+  };
+
   // Update form data when user authentication state changes
   useEffect(() => {
     setFormData(prev => ({
@@ -53,7 +83,19 @@ export default function StockPurchaseForm({
       email: userEmail,
       walletAddress: walletAddress
     }));
+    
+    // Check purchase history when user email is available
+    if (userEmail) {
+      checkPurchaseHistory(userEmail);
+    }
   }, [userEmail, walletAddress]);
+
+  // Auto-trigger login modal for unauthenticated users
+  useEffect(() => {
+    if (!user) {
+      login();
+    }
+  }, [user, login]);
 
   // Exchange rate (1 USD = 24.5 SLL)
   const USD_TO_SLL_RATE = 24.5;
@@ -71,9 +113,11 @@ export default function StockPurchaseForm({
     confirmationManualProcess: false // "this transaction is process manually..."
   });
   
-  // Calculate transaction fee and USD equivalent
+  // Calculate fees and USD equivalent
   const transactionFee = formData.amountInLeones ? (parseFloat(formData.amountInLeones) * 0.01) : 0;
-  const amountAfterFee = formData.amountInLeones ? (parseFloat(formData.amountInLeones) - transactionFee) : 0;
+  const onboardingFeeInLeones = isFirstTimePurchase ? (5 * USD_TO_SLL_RATE) : 0; // $5 in Leones
+  const totalFees = transactionFee + onboardingFeeInLeones;
+  const amountAfterFee = formData.amountInLeones ? (parseFloat(formData.amountInLeones) - totalFees) : 0;
   const usdEquivalent = amountAfterFee > 0 ? (amountAfterFee / USD_TO_SLL_RATE) : 0;
 
   const handleInputChange = (field: string, value: string | boolean) => {
@@ -116,7 +160,9 @@ export default function StockPurchaseForm({
   const generateReceiptData = () => {
     const timestamp = new Date().toLocaleString();
     const transactionFee = parseFloat(formData.amountInLeones) * 0.01;
-    const amountAfterFee = parseFloat(formData.amountInLeones) - transactionFee;
+    const onboardingFeeInLeones = isFirstTimePurchase ? (5 * USD_TO_SLL_RATE) : 0;
+    const totalFees = transactionFee + onboardingFeeInLeones;
+    const amountAfterFee = parseFloat(formData.amountInLeones) - totalFees;
     const usdEquivalent = amountAfterFee / USD_TO_SLL_RATE;
     
     return {
@@ -126,6 +172,9 @@ export default function StockPurchaseForm({
       stockPrice,
       amountInLeones: formData.amountInLeones,
       transactionFee: transactionFee.toFixed(2),
+      onboardingFee: onboardingFeeInLeones.toFixed(2),
+      isFirstTimePurchase,
+      totalFees: totalFees.toFixed(2),
       amountAfterFee: amountAfterFee.toFixed(2),
       usdEquivalent: usdEquivalent.toFixed(2),
       mobileNumber: formData.mobileNumber,
@@ -353,6 +402,9 @@ export default function StockPurchaseForm({
       submitData.append('confirmation2', formData.confirmation2.toString());
       submitData.append('confirmationManualProcess', formData.confirmationManualProcess.toString());
       submitData.append('transactionType', 'CashIn'); // Automatically set to CashIn for purchases
+      submitData.append('isFirstTimePurchase', isFirstTimePurchase.toString());
+      submitData.append('onboardingFeeInLeones', onboardingFeeInLeones.toString());
+      submitData.append('totalFees', totalFees.toString());
       if (formData.paymentReceipt) {
         submitData.append('paymentReceipt', formData.paymentReceipt);
       }
@@ -482,8 +534,15 @@ export default function StockPurchaseForm({
                 <span className="text-orange-400 font-medium">-{parseFloat(receiptData.transactionFee).toFixed(2)} SLL</span>
               </div>
               
+              {receiptData.isFirstTimePurchase && parseFloat(receiptData.onboardingFee) > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300">Onboarding Fee (One-time)</span>
+                  <span className="text-blue-400 font-medium">-{parseFloat(receiptData.onboardingFee).toFixed(2)} SLL</span>
+                </div>
+              )}
+              
               <div className="flex justify-between items-center">
-                <span className="text-gray-300">Amount After Fee</span>
+                <span className="text-gray-300">Amount After Fees</span>
                 <span className="text-white font-medium">{parseFloat(receiptData.amountAfterFee).toFixed(2)} SLL</span>
               </div>
               
@@ -559,13 +618,6 @@ export default function StockPurchaseForm({
       </div>
     );
   }
-
-  // Auto-trigger login modal for unauthenticated users
-  useEffect(() => {
-    if (!user) {
-      login();
-    }
-  }, [user]);
 
   // Check if user is authenticated
   if (!user) {
@@ -660,8 +712,11 @@ export default function StockPurchaseForm({
             />
             <p className="text-xs text-orange-400 mt-2 flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
-              1% transaction fee will be applied.
+              1% transaction fee will be applied{isFirstTimePurchase ? ' + $5 one-time onboarding fee' : ''}.
             </p>
+            {checkingPurchaseHistory && (
+              <p className="text-xs text-blue-400 mt-1">Checking purchase history...</p>
+            )}
           </div>
 
            {/* Transaction Summary - Only show when amount field is focused */}
@@ -681,8 +736,14 @@ export default function StockPurchaseForm({
                    <span className="text-sm text-gray-400">Transaction Fee (1%):</span>
                    <span className="text-sm text-orange-400 font-medium">-{transactionFee.toFixed(2)} SLL</span>
                  </div>
+                 {isFirstTimePurchase && onboardingFeeInLeones > 0 && (
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm text-gray-400">Onboarding Fee (One-time):</span>
+                     <span className="text-sm text-blue-400 font-medium">-{onboardingFeeInLeones.toFixed(2)} SLL</span>
+                   </div>
+                 )}
                  <div className="flex justify-between items-center">
-                   <span className="text-sm text-gray-400">Amount After Fee:</span>
+                   <span className="text-sm text-gray-400">Amount After Fees:</span>
                    <span className="text-sm text-white font-medium">{amountAfterFee.toFixed(2)} SLL</span>
                  </div>
                  <div className="flex justify-between items-center">
@@ -818,7 +879,12 @@ export default function StockPurchaseForm({
             
             <div className="mb-4">
               <p className="text-sm text-gray-300 mb-3">
-                Copy this USSD code and dial it on your phone to complete the payment of <span className="text-orange-400 font-semibold">{parseFloat(formData.amountInLeones).toLocaleString()} SLL</span>:
+                Copy this USSD code and dial it on your phone to complete the payment of <span className="text-orange-400 font-semibold">{(parseFloat(formData.amountInLeones) + totalFees).toLocaleString()} SLL</span>:
+                {isFirstTimePurchase && onboardingFeeInLeones > 0 && (
+                  <span className="block text-xs text-blue-400 mt-1">
+                    (Includes ${onboardingFeeInLeones.toFixed(2)} SLL one-time onboarding fee)
+                  </span>
+                )}
               </p>
               
               <div className="flex items-center gap-2 p-4 rounded-lg border border-white/20"
@@ -827,7 +893,7 @@ export default function StockPurchaseForm({
                       backdropFilter: 'blur(5px)'
                     }}>
                  <code className="flex-1 text-orange-300 font-mono text-lg font-bold break-all">
-                   #144*2*2*232864*{formData.amountInLeones}#
+                   #144*2*2*232864*{Math.round(parseFloat(formData.amountInLeones) + totalFees)}#
                  </code>
                 <Button
                   type="button"
