@@ -7,11 +7,11 @@ const FEE_PAYER_PRIVATE_KEY = process.env.SOLANA_FEE_PAYER_PRIVATE_KEY!;
 const FEE_PAYER_ADDRESS = process.env.SOLANA_FEE_PAYER_ADDRESS!;
 
 // Initialize fee payer keypair
-const feePayerWallet = Keypair.fromSecretKey(
+const feePayerWallet = FEE_PAYER_PRIVATE_KEY ? Keypair.fromSecretKey(
   FEE_PAYER_PRIVATE_KEY.startsWith('[') 
     ? new Uint8Array(JSON.parse(FEE_PAYER_PRIVATE_KEY))
     : bs58.decode(FEE_PAYER_PRIVATE_KEY)
-);
+) : null;
 
 // Connect to Solana
 const connection = new Connection(clusterApiUrl('mainnet-beta'));
@@ -100,6 +100,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Add fee payer signature to the already signed transaction
+    if (!feePayerWallet) {
+      return NextResponse.json({
+        error: 'Server configuration error - fee payer wallet not initialized'
+      }, { status: 500 });
+    }
     transaction.sign([feePayerWallet]);
 
     console.log('Transaction verified and signed with company wallet');
