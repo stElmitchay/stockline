@@ -32,8 +32,8 @@ export default function StockPurchaseForm({
   const [receiptData, setReceiptData] = useState<any>(null);
   const [stockLogoUrl, setStockLogoUrl] = useState<string | null>(null);
   const [isFirstTimePurchase, setIsFirstTimePurchase] = useState<boolean>(true);
-  const [checkingPurchaseHistory, setCheckingPurchaseHistory] = useState<boolean>(false);
   const receiptRef = useRef<HTMLDivElement>(null);
+  const loginAttemptedRef = useRef<boolean>(false);
   
   // Find stock logo URL from stocks data
   useEffect(() => {
@@ -52,7 +52,6 @@ export default function StockPurchaseForm({
   const checkPurchaseHistory = async (email: string) => {
     if (!email) return;
     
-    setCheckingPurchaseHistory(true);
     try {
       const response = await fetch('/api/airtable/check-purchase-history', {
         method: 'POST',
@@ -66,13 +65,16 @@ export default function StockPurchaseForm({
         const data = await response.json();
         // User is first-time if they haven't paid subscription fee yet
         setIsFirstTimePurchase(!data.hasSubscriptionFee);
+        console.log('Purchase history check:', { email, hasSubscriptionFee: data.hasSubscriptionFee, isFirstTime: !data.hasSubscriptionFee });
+      } else {
+        console.error('API response not ok:', response.status, response.statusText);
+        // Default to first-time purchase if API fails
+        setIsFirstTimePurchase(true);
       }
     } catch (error) {
       console.error('Error checking purchase history:', error);
       // Default to first-time purchase if check fails
       setIsFirstTimePurchase(true);
-    } finally {
-      setCheckingPurchaseHistory(false);
     }
   };
 
@@ -92,10 +94,14 @@ export default function StockPurchaseForm({
 
   // Auto-trigger login modal for unauthenticated users
   useEffect(() => {
-    if (!user) {
+    if (!user && !loginAttemptedRef.current) {
+      loginAttemptedRef.current = true;
       login();
     }
-  }, [user, login]);
+    if (user) {
+      loginAttemptedRef.current = false;
+    }
+  }, [user]);
 
   // Exchange rate (1 USD = 24.5 SLL)
   const USD_TO_SLL_RATE = 24.5;
@@ -119,6 +125,12 @@ export default function StockPurchaseForm({
   const totalFees = transactionFee + onboardingFeeInLeones;
   const amountAfterFee = formData.amountInLeones ? (parseFloat(formData.amountInLeones) - totalFees) : 0;
   const usdEquivalent = amountAfterFee > 0 ? (amountAfterFee / USD_TO_SLL_RATE) : 0;
+  
+  // Check if amount meets minimum order requirement
+  const minimumOrderUSD = 5;
+  const minimumOrderLeones = minimumOrderUSD * USD_TO_SLL_RATE;
+  const currentAmount = parseFloat(formData.amountInLeones) || 0;
+  const isBelowMinimum = currentAmount > 0 && currentAmount < minimumOrderLeones;
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -381,6 +393,15 @@ export default function StockPurchaseForm({
       // Validate required fields
       if (!formData.email || !formData.mobileNumber || !formData.amountInLeones || !formData.stockTicker || !formData.walletAddress) {
         throw new Error('Please fill in all required fields. Make sure you are logged in and have a connected wallet.');
+      }
+
+      // Validate minimum order amount ($5 USD equivalent)
+      const minimumOrderUSD = 5;
+      const minimumOrderLeones = minimumOrderUSD * USD_TO_SLL_RATE;
+      const orderAmount = parseFloat(formData.amountInLeones);
+      
+      if (orderAmount < minimumOrderLeones) {
+        throw new Error(`Minimum order amount is $${minimumOrderUSD} USD (${minimumOrderLeones.toLocaleString()} Leones)`);
       }
 
       if (!formData.confirmation1 || !formData.confirmation2 || !formData.confirmationManualProcess) {
@@ -695,6 +716,11 @@ export default function StockPurchaseForm({
           {/* Amount in Leones */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Amount in Leones *</label>
+            {isFirstTimePurchase && (
+              <p className="text-xs text-gray-400 mb-2">
+                Minimum order: $5 USD ({(5 * USD_TO_SLL_RATE).toLocaleString()} Leones)
+              </p>
+            )}
             <Input
               type="number"
               value={formData.amountInLeones}
@@ -710,13 +736,19 @@ export default function StockPurchaseForm({
               placeholder="Enter amount in Leones"
               required
             />
-            <p className="text-xs text-orange-400 mt-2 flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
-              1% transaction fee will be applied{isFirstTimePurchase ? ' + $5 one-time onboarding fee' : ''}.
-            </p>
-            {checkingPurchaseHistory && (
-              <p className="text-xs text-blue-400 mt-1">Checking purchase history...</p>
-            )}
+            <div className="mt-1 space-y-1">
+              <p className="text-xs text-orange-400 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                1% transaction fee will be applied{isFirstTimePurchase ? ' + $5 one-time onboarding fee' : ''}.
+              </p>
+              {isBelowMinimum && (
+                <p className="text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Amount is below minimum order requirement of ${minimumOrderUSD} USD
+                </p>
+              )}
+            </div>
+
           </div>
 
            {/* Transaction Summary - Only show when amount field is focused */}
@@ -830,10 +862,10 @@ export default function StockPurchaseForm({
         {/* Submit Button */}
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isBelowMinimum}
           className="w-full font-medium py-3 rounded-lg transition-all duration-300"
           style={{
-            background: isSubmitting 
+            background: (isSubmitting || isBelowMinimum)
               ? 'linear-gradient(135deg, rgba(217, 255, 102, 0.6) 0%, rgba(184, 230, 46, 0.6) 100%)'
               : 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
             color: '#000000',

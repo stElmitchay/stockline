@@ -730,30 +730,7 @@ export default function WalletPage() {
 								</div>
 								<p className="text-gray-400">Manage your investments</p>
 							</div>
-							<div className="flex items-center gap-3">
-								<button
-									onClick={() => fetchWalletData(false)}
-									className="flex items-center gap-2 px-3 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
-									disabled={refreshing}
-									title="Refresh wallet data and load recent transactions"
-								>
-									<TrendingUp className="w-4 h-4" />
-									<span className="text-sm">Refresh</span>
-								</button>
-								<button
-								onClick={() => {
-									navigator.clipboard.writeText(solanaWallet.address);
-									setCopied(true);
-									setTimeout(() => setCopied(false), 2000);
-								}}
-								className="flex items-center gap-2 px-3 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
-							>
-								{copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-								<span className="text-sm">
-									{copied ? 'Copied!' : `${solanaWallet.address.slice(0, 6)}...${solanaWallet.address.slice(-4)}`}
-								</span>
-							</button>
-							</div>
+
 						</div>
 					</div>
 				</div>
