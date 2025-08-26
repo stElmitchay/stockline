@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+type HoldingRecord = {
+  id: string;
+  created: string;
+  stockTicker: string;
+  amount: number;
+  status: string;
+  transactionType: string;
+};
+
 // Airtable configuration
 const AIRTABLE_BASE_ID = 'appipJcYVv4Grvglt';
 const AIRTABLE_TABLE_ID = 'tblNkOxBSMWJ3iCbK'; // Exchange table
@@ -42,7 +51,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     
     // Process the records to create historical data
-    const holdingsHistory = data.records?.map((record: Record<string, unknown>) => ({
+    const holdingsHistory: HoldingRecord[] = data.records?.map((record: Record<string, any>) => ({
       id: record.id as string,
       created: record.createdTime as string,
       stockTicker: (record.fields as Record<string, unknown>)['Stock Ticker'] as string || '',
@@ -52,7 +61,7 @@ export async function POST(request: NextRequest) {
     })) || [];
 
     // Group by date and calculate daily portfolio value
-    const dailyHoldings = holdingsHistory.reduce((acc: Record<string, { date: string; totalValue: number; transactions: unknown[] }>, record) => {
+    const dailyHoldings = holdingsHistory.reduce((acc: Record<string, { date: string; totalValue: number; transactions: HoldingRecord[] }>, record: HoldingRecord) => {
       const date = new Date(record.created).toISOString().split('T')[0];
       
       if (!acc[date]) {
