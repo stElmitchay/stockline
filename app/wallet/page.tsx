@@ -13,6 +13,7 @@ import { getCachedWalletData } from "@/utils/walletPrefetch";
 import stocksData from '@/data/stocks.json';
 import Navigation from "@/components/navigation";
 import { CashoutModal } from "@/components/modals/cashoutModal";
+import { HoldingsChart } from "@/components/holdingsChart";
 
 import { getAccount } from "@solana/spl-token";
 import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
@@ -468,16 +469,22 @@ export default function WalletPage() {
 
 			  // Process parsed
 			  if (currentTokenAccounts.value.length > 0) {
-			    const parsedInfos = currentTokenAccounts.value.map(acc => acc.account.data.parsed.info as TokenInfo);
+			    console.log(`Debug: Processing ${currentTokenAccounts.value.length} parsed token accounts`);
+			    const parsedInfos = currentTokenAccounts.value.map(acc => {
+			      const info = acc.account.data.parsed.info as TokenInfo;
+			      console.log(`Debug: Parsed token ${info.mint} with balance ${info.tokenAmount.uiAmount}`);
+			      return info;
+			    });
 			    tokenInfos = [...tokenInfos, ...parsedInfos];
 			  }
 
-			  // Process raw if needed
+			  			// Process raw if needed
 			  if (currentTokenAccounts.value.length === 0 && currentRawAccounts.value.length > 0) {
 			    console.log('Debug: Processing raw token accounts...');
 			    for (const rawAccount of currentRawAccounts.value) {
 			      try {
 			        const accountInfo = await getAccount(connection, rawAccount.pubkey, undefined, programId);
+			        console.log(`Debug: Raw account ${rawAccount.pubkey.toString()} has amount: ${accountInfo.amount}`);
 			        if (accountInfo.amount > 0) {
 			          const mintInfo = await getMint(connection, accountInfo.mint, undefined, programId);
 			          const decimals = mintInfo.decimals;
@@ -493,7 +500,10 @@ export default function WalletPage() {
 			            mint: accountInfo.mint.toString(),
 			            tokenAmount,
 			          };
+			          console.log(`Debug: Added token ${info.mint} with balance ${uiAmount}`);
 			          tokenInfos.push(info);
+			        } else {
+			          console.log(`Debug: Skipping token with zero balance: ${accountInfo.mint.toString()}`);
 			        }
 			      } catch (parseError) {
 			        console.error('Error parsing raw account:', parseError);
@@ -503,7 +513,7 @@ export default function WalletPage() {
 			}
 
 			// Remove duplicates by mint
-			let processedTokens = tokenInfos.filter((token, index, self) =>
+			const processedTokens = tokenInfos.filter((token, index, self) =>
 			  index === self.findIndex((t) => t.mint === token.mint)
 			);
 
@@ -515,25 +525,32 @@ export default function WalletPage() {
 			for (const info of processedTokens) {
 				const balance = info.tokenAmount.uiAmount;
 				console.log(`Processing token: ${info.mint}, balance: ${balance}`);
-				let metadata = await fetchTokenMetadata(info.mint, connection);
-				console.log(`  - Initial Metadata:`, metadata);
-				const stockInfo = stockMap.get(info.mint);
-				if (stockInfo) {
-					metadata = {
-						symbol: stockInfo.symbol,
-						name: stockInfo.name,
-						logoURI: stockInfo.logoUrl
-					};
-					console.log(`  - Overridden with stocks.json:`, metadata);
+				
+				// Only add tokens with positive balance (or all tokens in debug mode)
+				const showAllTokens = process.env.NODE_ENV === 'development' && false; // Set to true to show all tokens
+				if (balance > 0 || showAllTokens) {
+					let metadata = await fetchTokenMetadata(info.mint, connection);
+					console.log(`  - Initial Metadata:`, metadata);
+					const stockInfo = stockMap.get(info.mint);
+					if (stockInfo) {
+						metadata = {
+							symbol: stockInfo.symbol,
+							name: stockInfo.name,
+							logoURI: stockInfo.logoUrl
+						};
+						console.log(`  - Overridden with stocks.json:`, metadata);
+					}
+					tokenData.push({
+						mint: info.mint,
+						balance: balance,
+						decimals: info.tokenAmount.decimals,
+						symbol: metadata.symbol,
+						name: metadata.name,
+						logoURI: metadata.logoURI
+					});
+				} else {
+					console.log(`  - Skipping token with zero/negative balance: ${info.mint}`);
 				}
-				tokenData.push({
-					mint: info.mint,
-					balance: balance,
-					decimals: info.tokenAmount.decimals,
-					symbol: metadata.symbol,
-					name: metadata.name,
-					logoURI: metadata.logoURI
-				});
 			}
 
 			console.log(`Final processed ${tokenData.length} tokens`);
@@ -789,6 +806,16 @@ export default function WalletPage() {
 					</div>
 				</div>
 
+				{/* Holdings Chart */}
+				{solanaWallet && !loading && (
+					<div className="max-w-4xl mx-auto mb-6">
+						<HoldingsChart 
+							walletAddress={solanaWallet.address}
+							currentValue={calculateTotalPortfolioValue()}
+						/>
+					</div>
+				)}
+
 
 
 				{/* Content Area */}
@@ -914,7 +941,36 @@ export default function WalletPage() {
 									</div>
 								</div>
 							))
-							) : null}
+							) : (
+								<div className="relative overflow-hidden rounded-2xl p-6 text-center"
+									style={{
+										background: '#2A2A2A',
+										border: '1px solid rgba(255, 255, 255, 0.1)',
+										boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+									}}>
+									<div className="mb-4">
+										<div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+											<span className="text-white font-bold text-xl">💼</span>
+										</div>
+										<h3 className="text-lg font-semibold text-white mb-2">No Tokens Found</h3>
+										<p className="text-gray-400 mb-4">
+											Your wallet doesn't contain any SPL tokens yet.
+										</p>
+										<div className="text-sm text-gray-500 space-y-1">
+											<p>• Only SPL tokens are displayed here</p>
+											<p>• SOL balance is shown in the portfolio value above</p>
+											<p>• Purchase tokens from the stocks page to see them here</p>
+										</div>
+									</div>
+									<Link
+										href="/stocks"
+										className="inline-flex items-center gap-2 px-6 py-3 bg-[#D9FF66] text-black rounded-full font-semibold hover:bg-[#B8E62E] transition-colors"
+									>
+										<span>Browse Stocks</span>
+										<ArrowLeft className="h-4 w-4 rotate-180" />
+									</Link>
+								</div>
+							)}
 						</div>
 					)}
 				</div>
