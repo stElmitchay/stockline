@@ -296,18 +296,16 @@ export function StockCard({ stock }: StockCardProps) {
                   {isLoaded ? 'Order Now' : 'Loading...'}
                 </Button>
               </Link>
-              <Button 
-                size="sm" 
-                variant="outline"
-                className="w-full border-gray-600 text-gray-300"
-                onClick={() => {
-                  const solscanUrl = stock.solscanUrl || `${EXTERNAL_URLS.SOLSCAN_BASE}${stock.solanaAddress}`;
-                  window.open(solscanUrl, '_blank');
-                }}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                View Details
-              </Button>
+              <Link href={`/stocks/${encodeURIComponent(stock.symbol)}`} className="block">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="w-full border-gray-600 text-gray-300"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+              </Link>
             </>
           ) : (
             <>
