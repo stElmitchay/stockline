@@ -1,51 +1,11 @@
 {
   "xStocks": [
     {
-      "symbol": "TSLAx",
-      "name": "Tesla xStock",
-      "solanaAddress": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
-      "solscanUrl": "https://solscan.io/token/XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
-      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/TSLA.png",
-      "isAvailable": true
-    },
-    {
-      "symbol": "SPYx",
-      "name": "SP500 xStock",
-      "solanaAddress": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
-      "solscanUrl": "https://solscan.io/token/XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
-      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/SPY.png",
-      "isAvailable": true
-    },
-    {
-      "symbol": "NVDAx",
-      "name": "NVIDIA xStock",
-      "solanaAddress": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
-      "solscanUrl": "https://solscan.io/token/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
-      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/NVDA.png",
-      "isAvailable": true
-    },
-    {
-      "symbol": "CRCLx",
-      "name": "Circle xStock",
-      "solanaAddress": "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
-      "solscanUrl": "https://solscan.io/token/XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
-      "logoUrl": "https://www.parqet.com/api/logos/stocks/CRCL",
-      "isAvailable": true
-    },
-    {
-      "symbol": "MSTRx",
-      "name": "MicroStrategy xStock",
-      "solanaAddress": "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
-      "solscanUrl": "https://solscan.io/token/XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
-      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/MSTR.png",
-      "isAvailable": true
-    },
-    {
-      "symbol": "METAx",
-      "name": "Meta xStock",
-      "solanaAddress": "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
-      "solscanUrl": "https://solscan.io/token/Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
-      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/META.png",
+      "symbol": "GOOGLx",
+      "name": "Alphabet xStock",
+      "solanaAddress": "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
+      "solscanUrl": "https://solscan.io/token/XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/GOOGL.png",
       "isAvailable": true
     },
     {
@@ -57,12 +17,12 @@
       "isAvailable": true
     },
     {
-      "symbol": "GOOGLx",
-      "name": "Alphabet xStock",
-      "solanaAddress": "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
-      "solscanUrl": "https://solscan.io/token/XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
-      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/GOOGL.png",
-      "isAvailable": true
+    "symbol": "CRCLx",
+    "name": "Circle xStock",
+    "solanaAddress": "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
+    "solscanUrl": "https://solscan.io/token/XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
+    "logoUrl": "https://www.parqet.com/api/logos/stocks/CRCL",
+    "isAvailable": true
     },
     {
       "symbol": "COINx",
@@ -73,11 +33,51 @@
       "isAvailable": true
     },
     {
+      "symbol": "METAx",
+      "name": "Meta xStock",
+      "solanaAddress": "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
+      "solscanUrl": "https://solscan.io/token/Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/META.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "MSTRx",
+      "name": "MicroStrategy xStock",
+      "solanaAddress": "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
+      "solscanUrl": "https://solscan.io/token/XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/MSTR.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "NVDAx",
+      "name": "NVIDIA xStock",
+      "solanaAddress": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+      "solscanUrl": "https://solscan.io/token/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/NVDA.png",
+      "isAvailable": true
+    },
+    {
       "symbol": "HOODx",
       "name": "Robinhood xStock",
       "solanaAddress": "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg",
       "solscanUrl": "https://solscan.io/token/XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg",
       "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/HOOD.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "SPYx",
+      "name": "SP500 xStock",
+      "solanaAddress": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+      "solscanUrl": "https://solscan.io/token/XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/SPY.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "TSLAx",
+      "name": "Tesla xStock",
+      "solanaAddress": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+      "solscanUrl": "https://solscan.io/token/XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/TSLA.png",
       "isAvailable": true
     },
     {

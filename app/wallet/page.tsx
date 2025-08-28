@@ -61,8 +61,6 @@ export default function WalletPage() {
 	const [showCashoutModal, setShowCashoutModal] = useState(false);
 	const [pendingCashoutData, setPendingCashoutData] = useState<any>(null);
 
-	const isDev = process.env.NODE_ENV === 'development';
-
 	// Get the first Solana wallet
 	const solanaWalletAccount = user?.linkedAccounts?.find(
 		(account) => account.type === "wallet" && account.chainType === "solana"
@@ -229,14 +227,14 @@ export default function WalletPage() {
 		try {
 			// Try to get cached data first using the utility function
 			const cachedData = getCachedWalletData(solanaWallet!.address);
-			if (isDev) console.log('🔍 Checking for cached wallet data:', {
+			console.log('🔍 Checking for cached wallet data:', {
 				address: solanaWallet!.address,
 				hasCachedData: !!cachedData,
 				cacheAge: cachedData ? (Date.now() - cachedData.timestamp) / 1000 : 'N/A'
 			});
 			
 			if (cachedData) {
-					if (isDev) console.log('✅ Using cached wallet data immediately:', cachedData);
+					console.log('✅ Using cached wallet data immediately:', cachedData);
 					// Set cached data immediately to eliminate loading screen
 					setBalance(cachedData.balance);
 					setTokens(cachedData.tokens);
@@ -283,7 +281,7 @@ export default function WalletPage() {
 			setError(null);
 			await fetchWalletData();
 		} catch (error) {
-			if (isDev) console.error('Error in fetchWalletDataCached:', error);
+			console.error('Error in fetchWalletDataCached:', error);
 			// Fall back to regular fetch on any error
 			setLoading(true);
 			setError(null);
@@ -301,34 +299,32 @@ export default function WalletPage() {
 			setError(null);
 
 			const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
-			if (isDev) console.log('Debug: Using RPC URL:', rpcUrl);
+			console.log('Debug: Using RPC URL:', rpcUrl);  // Log the RPC URL for verification
 
 			const connection = new Connection(rpcUrl as string, { commitment: 'processed' });
 			const publicKey = new PublicKey(solanaWallet!.address);
-			if (isDev) console.log('Debug: Wallet Address:', publicKey.toString());
+			console.log('Debug: Wallet Address:', publicKey.toString());
 
 			// Test RPC connection with version
-			if (isDev) console.log('Debug: Testing RPC connection...');
+			console.log('Debug: Testing RPC connection...');
 			try {
 				const version = await connection.getVersion();
-				if (isDev) console.log('Debug: RPC connection successful, version:', version);
+				console.log('Debug: RPC connection successful, version:', version);
 			} catch (rpcError) {
-				if (isDev) console.error('Debug: RPC connection failed:', rpcError);
+				console.error('Debug: RPC connection failed:', rpcError);
 				throw new Error(`RPC connection failed: ${rpcError}`);
 			}
 
 			// Fetch SOL balance
 			const solBalance = await connection.getBalance(publicKey);
 			setBalance(solBalance / LAMPORTS_PER_SOL);
-			if (isDev) console.log('Debug: SOL Balance:', solBalance / LAMPORTS_PER_SOL);
+			console.log('Debug: SOL Balance:', solBalance / LAMPORTS_PER_SOL);
 
 			// Fetch token accounts with on-chain balance verification
-			if (isDev) {
-				console.log('Debug: About to fetch token accounts...');
-				console.log('Debug: Public key:', publicKey.toString());
-				console.log('Debug: TOKEN_PROGRAM_ID:', TOKEN_PROGRAM_ID.toString());
-				console.log('Debug: TOKEN_2022_PROGRAM_ID:', TOKEN_2022_PROGRAM_ID.toString());
-			}
+			console.log('Debug: About to fetch token accounts...');
+			console.log('Debug: Public key:', publicKey.toString());
+			console.log('Debug: TOKEN_PROGRAM_ID:', TOKEN_PROGRAM_ID.toString());
+			console.log('Debug: TOKEN_2022_PROGRAM_ID:', TOKEN_2022_PROGRAM_ID.toString());
 
 			interface TokenInfo {
 			  mint: string;
@@ -344,42 +340,42 @@ export default function WalletPage() {
 			const programIds = [TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID];
 
 			for (const programId of programIds) {
-			  if (isDev) console.log(`Debug: Processing program: ${programId.toString()}`);
+			  console.log(`Debug: Processing program: ${programId.toString()}`);
 			  let currentTokenAccounts;
 			  let currentRawAccounts;
 
 			  // Method 1: getParsedTokenAccountsByOwner
 			  try {
-			    if (isDev) console.log('Debug: Trying getParsedTokenAccountsByOwner...');
+			    console.log('Debug: Trying getParsedTokenAccountsByOwner...');
 			    currentTokenAccounts = await connection.getParsedTokenAccountsByOwner(
 			      publicKey,
 			      { programId }
 			    );
-			    if (isDev) console.log(`Method 1 found ${currentTokenAccounts.value.length} token accounts for ${programId.toString()}`);
+			    console.log(`Method 1 found ${currentTokenAccounts.value.length} token accounts for ${programId.toString()}`);
 			  } catch (error1) {
-			    if (isDev) console.error('Debug: Method 1 failed:', error1);
+			    console.error('Debug: Method 1 failed:', error1);
 			    currentTokenAccounts = { value: [] };
 			  }
 
 			  // Method 2: getTokenAccountsByOwner (raw)
 			  try {
-			    if (isDev) console.log('Debug: Trying getTokenAccountsByOwner...');
+			    console.log('Debug: Trying getTokenAccountsByOwner...');
 			    currentRawAccounts = await connection.getTokenAccountsByOwner(
 			      publicKey,
 			      { programId }
 			    );
-			    if (isDev) console.log(`Method 2 found ${currentRawAccounts.value.length} raw token accounts for ${programId.toString()}`);
+			    console.log(`Method 2 found ${currentRawAccounts.value.length} raw token accounts for ${programId.toString()}`);
 			  } catch (error2) {
-			    if (isDev) console.error('Debug: Method 2 failed:', error2);
+			    console.error('Debug: Method 2 failed:', error2);
 			    currentRawAccounts = { value: [] };
 			  }
 
 			  // Process parsed
 			  if (currentTokenAccounts.value.length > 0) {
-			    if (isDev) console.log(`Debug: Processing ${currentTokenAccounts.value.length} parsed token accounts`);
+			    console.log(`Debug: Processing ${currentTokenAccounts.value.length} parsed token accounts`);
 			    const parsedInfos = currentTokenAccounts.value.map(acc => {
 			      const info = acc.account.data.parsed.info as TokenInfo;
-			      if (isDev) console.log(`Debug: Parsed token ${info.mint} with balance ${info.tokenAmount.uiAmount}`);
+			      console.log(`Debug: Parsed token ${info.mint} with balance ${info.tokenAmount.uiAmount}`);
 			      return info;
 			    });
 			    tokenInfos = [...tokenInfos, ...parsedInfos];
@@ -387,11 +383,11 @@ export default function WalletPage() {
 
 			  			// Process raw if needed
 			  if (currentTokenAccounts.value.length === 0 && currentRawAccounts.value.length > 0) {
-			    if (isDev) console.log('Debug: Processing raw token accounts...');
+			    console.log('Debug: Processing raw token accounts...');
 			    for (const rawAccount of currentRawAccounts.value) {
 			      try {
 			        const accountInfo = await getAccount(connection, rawAccount.pubkey, undefined, programId);
-			        if (isDev) console.log(`Debug: Raw account ${rawAccount.pubkey.toString()} has amount: ${accountInfo.amount}`);
+			        console.log(`Debug: Raw account ${rawAccount.pubkey.toString()} has amount: ${accountInfo.amount}`);
 			        if (accountInfo.amount > 0) {
 			          const mintInfo = await getMint(connection, accountInfo.mint, undefined, programId);
 			          const decimals = mintInfo.decimals;
@@ -407,13 +403,13 @@ export default function WalletPage() {
 			            mint: accountInfo.mint.toString(),
 			            tokenAmount,
 			          };
-			          if (isDev) console.log(`Debug: Added token ${info.mint} with balance ${uiAmount}`);
+			          console.log(`Debug: Added token ${info.mint} with balance ${uiAmount}`);
 			          tokenInfos.push(info);
 			        } else {
-			          if (isDev) console.log(`Debug: Skipping token with zero balance: ${accountInfo.mint.toString()}`);
+			          console.log(`Debug: Skipping token with zero balance: ${accountInfo.mint.toString()}`);
 			        }
 			      } catch (parseError) {
-			        if (isDev) console.error('Error parsing raw account:', parseError);
+			        console.error('Error parsing raw account:', parseError);
 			      }
 			    }
 			  }
@@ -424,7 +420,7 @@ export default function WalletPage() {
 			  index === self.findIndex((t) => t.mint === token.mint)
 			);
 
-			if (isDev) console.log(`Final processed ${processedTokens.length} unique tokens`);
+			console.log(`Final processed ${processedTokens.length} unique tokens`);
 
 			// Now create tokenData from processedTokens in parallel
 			const stockMap = new Map(stocksData.xStocks.map(stock => [stock.solanaAddress, stock]));
@@ -455,20 +451,15 @@ export default function WalletPage() {
 				})
 			);
 
-			if (isDev) console.log(`Final processed ${tokenData.length} tokens`);
+			console.log(`Final processed ${tokenData.length} tokens`);
 
-			// Fetch prices for all tokens with prioritized order: Alphabet first, Apple second, then UI order
-			const googleMint = tokenData.find(t => t.symbol === 'GOOGLx')?.mint;
-			const appleMint = tokenData.find(t => t.symbol === 'AAPLx')?.mint;
-			const restMints = tokenData
-				.map(t => t.mint)
-				.filter(m => m !== googleMint && m !== appleMint);
-			const orderedTokenMints = [googleMint, appleMint, ...restMints].filter(Boolean) as string[];
-			// Always include SOL mint for price, append to avoid blocking priority stocks
-			if (!orderedTokenMints.includes('So11111111111111111111111111111111111111112')) {
-				orderedTokenMints.push('So11111111111111111111111111111111111111112');
+			// Fetch prices for all tokens
+			const tokenMints = tokenData.map(token => token.mint);
+			// Always include SOL mint for price
+			if (!tokenMints.includes('So11111111111111111111111111111111111111112')) {
+				tokenMints.push('So11111111111111111111111111111111111111112');
 			}
-			const tokenPrices = await fetchTokenPrices(orderedTokenMints);
+			const tokenPrices = await fetchTokenPrices(tokenMints);
 
 			// Add prices to token data
 			const tokensWithPrices = tokenData.map(token => ({
@@ -476,7 +467,7 @@ export default function WalletPage() {
 				price: tokenPrices[token.mint] || 0
 			}));
 
-			if (isDev) console.log('Final token data with prices:', tokensWithPrices);
+			console.log('Final token data with prices:', tokensWithPrices);
 			setTokens(tokensWithPrices);
 
 			// Defer recent transactions fetch to idle time (lightweight summary only)
