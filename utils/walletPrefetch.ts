@@ -94,7 +94,7 @@ async function fetchTokenPrices(tokenMints: string[]) {
  */
 export async function prefetchWalletData(walletAddress: string): Promise<void> {
   try {
-    console.log('🚀 Starting wallet prefetch for:', walletAddress);
+    if (process.env.NODE_ENV === 'development') console.log('🚀 Starting wallet prefetch for:', walletAddress);
     // Check if we already have recent cached data (within 5 minutes)
     if (typeof window !== 'undefined') {
       const cached = localStorage.getItem(`wallet_cache_${walletAddress}`);
@@ -102,14 +102,14 @@ export async function prefetchWalletData(walletAddress: string): Promise<void> {
         const cachedData = JSON.parse(cached);
         const isRecent = Date.now() - cachedData.timestamp < 5 * 60 * 1000; // 5 minutes
         if (isRecent) {
-          console.log('⏭️ Skipping prefetch - recent cache exists:', {
+          if (process.env.NODE_ENV === 'development') console.log('⏭️ Skipping prefetch - recent cache exists:', {
             cacheAge: (Date.now() - cachedData.timestamp) / 1000
           });
           return; // Skip prefetch if we have recent data
         }
       }
     }
-    console.log('📥 No recent cache found, proceeding with prefetch...');
+    if (process.env.NODE_ENV === 'development') console.log('📥 No recent cache found, proceeding with prefetch...');
 
     const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
     if (!rpcUrl) {
@@ -232,7 +232,7 @@ export async function prefetchWalletData(walletAddress: string): Promise<void> {
         timestamp: Date.now()
       };
       localStorage.setItem(`wallet_cache_${walletAddress}`, JSON.stringify(walletCacheData));
-      console.log('💾 Wallet data prefetched and cached successfully:', {
+      if (process.env.NODE_ENV === 'development') console.log('💾 Wallet data prefetched and cached successfully:', {
         address: walletAddress,
         tokenCount: tokensWithPrices.length,
         balance: balance
@@ -240,7 +240,7 @@ export async function prefetchWalletData(walletAddress: string): Promise<void> {
     }
   } catch (error) {
     // Silently fail - prefetching should not disrupt the main application flow
-    console.warn('❌ Wallet prefetch failed:', error);
+    if (process.env.NODE_ENV === 'development') console.warn('❌ Wallet prefetch failed:', error);
     return;
   }
 }
