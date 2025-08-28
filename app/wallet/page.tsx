@@ -75,130 +75,33 @@ export default function WalletPage() {
 		walletIndex: (solanaWalletAccount as any).walletIndex,
 	} : null;
 
-	const fetchTokenMetadata = async (mint: string, connection: Connection) => {
-		try {
-			// Known tokens mapping for reliable identification
-			const knownTokens: { [key: string]: { symbol: string; name: string; logoURI?: string } } = {
-				'So11111111111111111111111111111111111111112': { 
-					symbol: 'SOL', 
-					name: 'Solana',
-					logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
-				},
-				'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': { 
-					symbol: 'USDC', 
-					name: 'USD Coin',
-					logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
-				},
-				'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': { 
-					symbol: 'USDT', 
-					name: 'Tether',
-					logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.png'
-				},
-				'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp': { 
-					symbol: 'TSLAx', 
-					name: 'Tesla Stock Token',
-					logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp/logo.png'
-				},
-				// Add fallback for problematic pump.fun token
-				'pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn': {
-					symbol: 'PUMP',
-					name: 'Pump Token',
-					logoURI: undefined
-				},
-			};
-			
-			// Check if it's a known token first
-			if (knownTokens[mint]) {
-				console.log(`Debug: Found known token for ${mint}:`, knownTokens[mint]);
-				return knownTokens[mint];
+	const fetchTokenMetadata = async (mint: string, _connection: Connection) => {
+		// Offline-first: tiny known map; otherwise derived fallback. stocks.json override is applied below.
+		const knownTokens: { [key: string]: { symbol: string; name: string; logoURI?: string } } = {
+			'So11111111111111111111111111111111111111112': {
+				symbol: 'SOL',
+				name: 'Solana',
+				logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
+			},
+			'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': {
+				symbol: 'USDC',
+				name: 'USD Coin',
+				logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
+			},
+			'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': {
+				symbol: 'USDT',
+				name: 'Tether',
+				logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.png'
+			},
+			'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp': {
+				symbol: 'TSLAx',
+				name: 'Tesla Stock Token',
+				logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp/logo.png'
 			}
-
-			// Try to fetch from Solana token list API
-			try {
-				console.log(`Debug: Fetching from Solana token list for ${mint}`);
-				const response = await fetch(`https://cdn.jsdelivr.net/gh/solana-labs/token-list@main/src/tokens/solana.tokenlist.json`);
-				if (response.ok) {
-					const tokenList = await response.json();
-					const tokenInfo = tokenList.tokens.find((token: any) => token.address === mint);
-					if (tokenInfo) {
-						console.log(`Debug: Found token in Solana token list: ${tokenInfo.symbol}`);
-						return {
-							symbol: tokenInfo.symbol,
-							name: tokenInfo.name,
-							logoURI: tokenInfo.logoURI
-						};
-					}
-				}
-			} catch (tokenListError) {
-				console.warn(`Failed to fetch from Solana token list for ${mint}:`, tokenListError);
-				// Continue to next method, don't throw
-			}
-
-			// Try Metaplex metadata
-			console.log(`Debug: Trying Metaplex for ${mint}`);
-			const metaplex = Metaplex.make(connection);
-			const mintPubkey = new PublicKey(mint);
-			const nft = await metaplex.nfts().findByMint({ mintAddress: mintPubkey });
-			if (nft && nft.name && nft.symbol) {
-				console.log(`Debug: Found Metaplex metadata for ${mint}:`, { name: nft.name, symbol: nft.symbol });
-				return {
-					symbol: nft.symbol,
-					name: nft.name,
-					logoURI: nft.json?.image
-				};
-			}
-		} catch (metadataError) {
-			console.warn(`Failed to fetch Metaplex metadata for ${mint}:`, metadataError);
-		}
-
-		// Try Jupiter API as fallback
-		try {
-			console.log(`Debug: Trying Jupiter API for ${mint}`);
-			const response = await fetch(`https://token.jup.ag/all`);
-			if (response.ok) {
-				const tokens = await response.json();
-				const tokenInfo = tokens.find((token: any) => token.address === mint);
-				if (tokenInfo) {
-					console.log(`Debug: Found token in Jupiter API: ${tokenInfo.symbol}`);
-					return {
-						symbol: tokenInfo.symbol,
-						name: tokenInfo.name,
-						logoURI: tokenInfo.logoURI
-					};
-				}
-			}
-		} catch (jupiterError) {
-			console.warn(`Failed to fetch from Jupiter API for ${mint}:`, jupiterError);
-		}
-
-		// Try Birdeye as last resort
-		try {
-			console.log(`Debug: Trying Birdeye for ${mint}`);
-			const response = await fetch(`https://public-api.birdeye.so/defi/token_overview?address=${mint}`, {
-				method: 'GET',
-				headers: {
-					'X-Chain': 'solana'
-				}
-			});
-			if (response.ok) {
-				const birdeyeData = await response.json();
-				if (birdeyeData.success && birdeyeData.data) {
-					console.log(`Debug: Found Birdeye metadata for ${mint}:`, birdeyeData.data);
-					return {
-						symbol: birdeyeData.data.symbol || mint.slice(0, 6) + '...',
-						name: birdeyeData.data.name || 'Unknown Token',
-						logoURI: birdeyeData.data.logoURI
-					};
-				}
-			}
-		} catch (birdeyeError) {
-			console.warn('Failed to fetch Birdeye data for metadata:', birdeyeError);
-		}
-
-		// If all else fails, return a generic name
-		console.log(`Debug: No metadata found for ${mint}, using generic name`);
-		return { 
-			symbol: mint.slice(0, 6) + '...', 
+		};
+		if (knownTokens[mint]) return knownTokens[mint];
+		return {
+			symbol: mint.slice(0, 6) + '...',
 			name: 'Unknown Token',
 			logoURI: undefined
 		};
@@ -398,7 +301,7 @@ export default function WalletPage() {
 			const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
 			console.log('Debug: Using RPC URL:', rpcUrl);  // Log the RPC URL for verification
 
-			const connection = new Connection(rpcUrl as string);
+			const connection = new Connection(rpcUrl as string, { commitment: 'processed' });
 			const publicKey = new PublicKey(solanaWallet!.address);
 			console.log('Debug: Wallet Address:', publicKey.toString());
 
@@ -519,39 +422,34 @@ export default function WalletPage() {
 
 			console.log(`Final processed ${processedTokens.length} unique tokens`);
 
-			// Now create tokenData from processedTokens
-			const tokenData: TokenAccount[] = [];
+			// Now create tokenData from processedTokens in parallel
 			const stockMap = new Map(stocksData.xStocks.map(stock => [stock.solanaAddress, stock]));
-			for (const info of processedTokens) {
-				const balance = info.tokenAmount.uiAmount;
-				console.log(`Processing token: ${info.mint}, balance: ${balance}`);
-				
-				// Only add tokens with positive balance (or all tokens in debug mode)
-				const showAllTokens = process.env.NODE_ENV === 'development' && false; // Set to true to show all tokens
-				if (balance > 0 || showAllTokens) {
-					let metadata = await fetchTokenMetadata(info.mint, connection);
-					console.log(`  - Initial Metadata:`, metadata);
+			const filtered = processedTokens.filter(info => info.tokenAmount.uiAmount > 0);
+			const tokenData: TokenAccount[] = await Promise.all(
+				filtered.map(async (info) => {
+					const balance = info.tokenAmount.uiAmount;
 					const stockInfo = stockMap.get(info.mint);
 					if (stockInfo) {
-						metadata = {
+						return {
+							mint: info.mint,
+							balance,
+							decimals: info.tokenAmount.decimals,
 							symbol: stockInfo.symbol,
 							name: stockInfo.name,
 							logoURI: stockInfo.logoUrl
 						};
-						console.log(`  - Overridden with stocks.json:`, metadata);
 					}
-					tokenData.push({
+					const metadata = await fetchTokenMetadata(info.mint, connection);
+					return {
 						mint: info.mint,
-						balance: balance,
+						balance,
 						decimals: info.tokenAmount.decimals,
 						symbol: metadata.symbol,
 						name: metadata.name,
 						logoURI: metadata.logoURI
-					});
-				} else {
-					console.log(`  - Skipping token with zero/negative balance: ${info.mint}`);
-				}
-			}
+					};
+				})
+			);
 
 			console.log(`Final processed ${tokenData.length} tokens`);
 
@@ -572,31 +470,33 @@ export default function WalletPage() {
 			console.log('Final token data with prices:', tokensWithPrices);
 			setTokens(tokensWithPrices);
 
-			// Fetch recent transactions with detailed information
-			const signatures = await connection.getSignaturesForAddress(
-				publicKey,
-				{ limit: 10 }
-			);
-
-			console.log(`Fetching details for ${signatures.length} transactions...`);
-			const transactionData: Transaction[] = [];
-
-			for (const sig of signatures) {
-				const txDetail = await fetchDetailedTransaction(connection, sig.signature, solanaWallet!.address);
-				if (txDetail) {
-					transactionData.push(txDetail);
-				}
+			// Defer recent transactions fetch to idle time (lightweight summary only)
+			const loadTx = async () => {
+				try {
+					const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 10 });
+					const transactionData: Transaction[] = signatures.map((sig) => ({
+						signature: sig.signature,
+						timestamp: sig.blockTime || 0,
+						type: sig.err ? 'failed' : 'received',
+						status: sig.err ? 'failed' : 'confirmed',
+						token: 'SOL',
+						tokenSymbol: 'SOL'
+					}));
+					setTransactions(transactionData);
+				} catch {}
+			};
+			if (typeof (window as any).requestIdleCallback === 'function') {
+				(window as any).requestIdleCallback(() => { loadTx(); });
+			} else {
+				setTimeout(loadTx, 0);
 			}
-
-			console.log('Processed transaction data:', transactionData);
-			setTransactions(transactionData);
 
 			// Cache the wallet data for future use
 			if (typeof window !== 'undefined') {
 				const walletCacheData = {
 					balance: balance,
 					tokens: tokensWithPrices,
-					transactions: transactionData,
+					transactions: [],
 					timestamp: Date.now()
 				};
 				localStorage.setItem(`wallet_cache_${solanaWallet!.address}`, JSON.stringify(walletCacheData));

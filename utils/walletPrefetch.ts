@@ -30,55 +30,36 @@ interface WalletData {
   timestamp: number;
 }
 
-// Local helper function to fetch token metadata
-async function fetchTokenMetadata(mint: string, connection: Connection) {
-  try {
-    // Try Metaplex metadata first
-    const metaplex = Metaplex.make(connection);
-    try {
-      const nft = await metaplex.nfts().findByMint({ mintAddress: new PublicKey(mint) });
-      if (nft.name && nft.symbol) {
-        return {
-          symbol: nft.symbol,
-          name: nft.name,
-          logoURI: nft.json?.image || ''
-        };
-      }
-    } catch (metadataError) {
-      // Silently continue to fallback
+// Local helper function to fetch token metadata (offline-first)
+async function fetchTokenMetadata(mint: string, _connection: Connection) {
+  const known: { [k: string]: { symbol: string; name: string; logoURI?: string } } = {
+    'So11111111111111111111111111111111111111112': {
+      symbol: 'SOL',
+      name: 'Solana',
+      logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
+    },
+    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': {
+      symbol: 'USDC',
+      name: 'USD Coin',
+      logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
+    },
+    'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': {
+      symbol: 'USDT',
+      name: 'Tether',
+      logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.png'
+    },
+    'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp': {
+      symbol: 'TSLAx',
+      name: 'Tesla Stock Token',
+      logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp/logo.png'
     }
-
-    // Fallback to Birdeye API for metadata
-    try {
-      const response = await fetch(`/api/birdeye?addresses=${mint}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data[mint]) {
-          const tokenInfo = data.data[mint];
-          return {
-            symbol: tokenInfo.symbol || 'UNKNOWN',
-            name: tokenInfo.name || 'Unknown Token',
-            logoURI: tokenInfo.logoURI || ''
-          };
-        }
-      }
-    } catch (birdeyeError) {
-      // Silently continue to fallback
-    }
-
-    // Final fallback
-    return {
-      symbol: 'UNKNOWN',
-      name: 'Unknown Token',
-      logoURI: ''
-    };
-  } catch (error) {
-    return {
-      symbol: 'UNKNOWN',
-      name: 'Unknown Token',
-      logoURI: ''
-    };
-  }
+  };
+  if (known[mint]) return known[mint];
+  return {
+    symbol: mint.slice(0, 6) + '...',
+    name: 'Unknown Token',
+    logoURI: ''
+  };
 }
 
 // Local helper function to fetch token prices
@@ -135,7 +116,7 @@ export async function prefetchWalletData(walletAddress: string): Promise<void> {
       return;
     }
 
-    const connection = new Connection(rpcUrl);
+    const connection = new Connection(rpcUrl, { commitment: 'processed' });
     const publicKey = new PublicKey(walletAddress);
 
     // Fetch SOL balance
