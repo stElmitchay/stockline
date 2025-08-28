@@ -1,14 +1,8 @@
-"use client";
- 
 import Link from "next/link";
 import stocksData from "@/data/stocks.json";
-import { useEffect, useState } from "react";
-import React from "react";
 import { PriceChart } from "@/components/priceChart";
 
-type Props = {
-  params: { symbol: string };
-};
+// Inline prop typing to avoid PageProps constraint issues
 
 const DETAILS: Record<string, { title: string; category: string; objective: string[]; benefits: string[] }> = {
   SPYx: {
@@ -133,8 +127,9 @@ const DETAILS: Record<string, { title: string; category: string; objective: stri
   },
 };
 
-export default function StockDetailsPage({ params }: Props) {
-  const symbolParam = decodeURIComponent(params.symbol || "");
+export default async function StockDetailsPage({ params }: { params: Promise<{ symbol: string }> }) {
+  const { symbol } = await params;
+  const symbolParam = decodeURIComponent(symbol || "");
   const stock = stocksData.xStocks.find((s) => s.symbol.toLowerCase() === symbolParam.toLowerCase());
 
   if (!stock) {
@@ -149,6 +144,7 @@ export default function StockDetailsPage({ params }: Props) {
   }
 
   const details = DETAILS[stock.symbol] || null;
+  const currentPrice = Number((stock as unknown as { price?: number }).price ?? 0);
 
   // no local sparkline; use reusable chart component for consistency
 
@@ -171,7 +167,7 @@ export default function StockDetailsPage({ params }: Props) {
 
         {/* Price chart (wallet-style) */}
         <div className="mt-6">
-          <PriceChart symbol={stock.symbol} currentPrice={Number(stock.price) || 0} />
+          <PriceChart symbol={stock.symbol} currentPrice={currentPrice} />
         </div>
 
         {details ? (
