@@ -1,239 +1,124 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// In-memory rate limiting
-let lastBirdeyeCall = 0;
-const BIRDEYE_RATE_LIMIT = 2000; // 2 seconds between calls (very conservative)
+// Simple in-memory cache for multi price responses (short TTL)
+const multiCache = new Map<string, { ts: number; data: any }>();
 
-export async function GET(request: NextRequest) {
+export const runtime = 'edge';
+
+
+export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const address = searchParams.get('address');
-    const addresses = searchParams.get('addresses'); // For batch requests
-    const batchIndex = searchParams.get('batchIndex'); // For progressive loading
-
-    // Handle batch requests
-    if (addresses) {
-      return await handleBatchRequest(addresses, batchIndex);
+    const apiKey = process.env.BIRDEYE_API_KEY || process.env.NEXT_PUBLIC_BIRDEYE_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
     }
 
-    // Handle single address requests
-    if (!address) {
-      return NextResponse.json({ error: 'Missing address parameter' }, { status: 400 });
+    const body = await request.json().catch(() => ({} as any));
+    let { addresses } = body as { addresses?: string[] | string };
+
+    if (!addresses) {
+      const { searchParams } = new URL(request.url);
+      const qs = searchParams.get('addresses') || '';
+      if (qs) addresses = qs.split(',').map(s => s.trim()).filter(Boolean);
     }
 
-    // Validate address format (basic check)
-    if (address.length !== 44 || !address.startsWith('Xs')) {
-      console.log(`Birdeye API proxy: Invalid address format: ${address}`);
-      return NextResponse.json({
-        success: true,
-        data: {
-          value: 0.01,
-          priceChange24h: 0,
-          updateUnixTime: Math.floor(Date.now() / 1000),
-          updateHumanTime: new Date().toISOString()
+    if (typeof addresses === 'string') {
+      addresses = addresses.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    const list = Array.isArray(addresses) ? addresses : [];
+    if (list.length === 0) {
+      return NextResponse.json({ error: 'No addresses provided' }, { status: 400 });
+    }
+
+    // Basic Solana address validation to avoid 500s upstream on bad input
+    const solanaAddrRegex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+    const tokens = Array.from(new Set(list.filter(a => solanaAddrRegex.test(a))));
+
+    const now = Date.now();
+    const ttlMs = 15000; // 15s cache
+    const results: Record<string, any> = {};
+    const toFetch: string[] = [];
+
+    for (const t of tokens) {
+      const cached = multiCache.get(t);
+      if (cached && now - cached.ts < ttlMs) {
+        results[t] = cached.data;
+      } else {
+        toFetch.push(t);
+      }
+    }
+
+    if (toFetch.length > 0) {
+      const chunks: string[][] = [];
+      for (let i = 0; i < toFetch.length; i += 100) {
+        chunks.push(toFetch.slice(i, i + 100));
+      }
+
+      const runChunk = async (chunk: string[]) => {
+        const resp = await fetch('https://public-api.birdeye.so/defi/multi_price', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'x-chain': 'solana',
+            'X-API-KEY': apiKey,
+            'User-Agent': 'Mozilla/5.0 (compatible; Stockline/1.0)'
+          },
+          body: JSON.stringify({ list_address: chunk.join(',') })
+        });
+
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          console.error(`Birdeye multi_price error ${resp.status}: ${errText}`);
+          // Fill chunk with nulls to avoid failing entire request
+          for (const addr of chunk) {
+            results[addr] = null as any;
+            multiCache.set(addr, { ts: now, data: null });
+          }
+          return;
+        }
+
+        const raw = await resp.json().catch(err => {
+          console.error('Failed to parse Birdeye response JSON:', err);
+          return null as any;
+        });
+        const payload = (raw && typeof raw === 'object' && 'data' in raw) ? (raw as any).data : raw;
+        for (const [addr, val] of Object.entries<any>(payload || {})) {
+          // Normalize to { success: true, data: {...} } so clients can rely on same shape
+          const normalized = (val && typeof val === 'object' && 'data' in val)
+            ? { success: true, data: (val as any).data }
+            : { success: true, data: val };
+          results[addr] = normalized;
+          multiCache.set(addr, { ts: now, data: normalized });
+        }
+
+        for (const addr of chunk) {
+          if (!results[addr]) {
+            const placeholder = null as any;
+            results[addr] = placeholder;
+            multiCache.set(addr, { ts: now, data: placeholder });
+          }
+        }
+      };
+
+      const queue = [...chunks];
+      const workers = Array.from({ length: Math.min(3, queue.length) }, async () => {
+        while (queue.length) {
+          const c = queue.shift();
+          if (!c) break;
+          await runChunk(c);
         }
       });
+
+      await Promise.all(workers);
     }
 
-    return await handleSingleRequest(address);
+    return NextResponse.json(results);
   } catch (error) {
-    console.error('Birdeye API proxy error:', error);
-    
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch Birdeye data',
-        details: error instanceof Error ? error.message : String(error)
-      },
+      { error: 'Failed to fetch prices', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
-}
-
-async function handleSingleRequest(address: string) {
-  // Server-side rate limiting
-  const now = Date.now();
-  const timeSinceLastCall = now - lastBirdeyeCall;
-  if (timeSinceLastCall < BIRDEYE_RATE_LIMIT) {
-    const waitTime = BIRDEYE_RATE_LIMIT - timeSinceLastCall;
-    console.log(`Birdeye API proxy: Rate limiting, waiting ${waitTime}ms`);
-    await new Promise(resolve => setTimeout(resolve, waitTime));
-  }
-  lastBirdeyeCall = Date.now();
-
-      console.log(`Birdeye API proxy: Fetching data for address: ${address}`);
-    console.log(`Birdeye API proxy: Address length: ${address.length}, starts with: ${address.substring(0, 4)}`);
-
-    const birdeyeUrl = `https://public-api.birdeye.so/defi/price?address=${address}`;
-    console.log(`Birdeye API proxy: Using Birdeye endpoint: ${birdeyeUrl}`);
-
-  const apiKey = process.env.BIRDEYE_API_KEY;
-  if (!apiKey) {
-    console.error('Birdeye API proxy: Missing BIRDEYE_API_KEY environment variable');
-    return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
-  }
-
-  const response = await fetch(birdeyeUrl, {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json',
-      'x-chain': 'solana',
-      'X-API-KEY': apiKey,
-      'User-Agent': 'Mozilla/5.0 (compatible; Stockline/1.0)',
-    },
-  });
-
-  console.log(`Birdeye API proxy: Birdeye endpoint response status: ${response.status}`);
-
-      if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Birdeye API proxy: Error response: ${errorText}`);
-      
-      if (response.status === 429) {
-        console.log('Birdeye API proxy: Rate limited, returning fallback data');
-        return NextResponse.json({
-          success: true,
-          data: {
-            value: 0.01,
-            priceChange24h: 0,
-            updateUnixTime: Math.floor(Date.now() / 1000),
-            updateHumanTime: new Date().toISOString()
-          }
-        });
-      }
-      
-      if (response.status === 400 && errorText.includes('invalid format')) {
-        console.log(`Birdeye API proxy: Invalid address format for ${address}, returning fallback data`);
-        return NextResponse.json({
-          success: true,
-          data: {
-            value: 0.01,
-            priceChange24h: 0,
-            updateUnixTime: Math.floor(Date.now() / 1000),
-            updateHumanTime: new Date().toISOString()
-          }
-        });
-      }
-      
-      throw new Error(`Birdeye API error: ${response.status} - ${errorText}`);
-    }
-
-  const data = await response.json();
-  console.log(`Birdeye API proxy: Success, data structure:`, data);
-  
-  return NextResponse.json(data);
-}
-
-async function handleBatchRequest(addressesParam: string, batchIndex?: string | null) {
-  const addressList = addressesParam.split(',').filter(addr => addr.trim());
-  const batchNum = batchIndex ? parseInt(batchIndex) : 0;
-  
-  console.log(`Birdeye API proxy: Processing batch ${batchNum + 1} with ${addressList.length} addresses individually with delays`);
-  
-  const results: any = {};
-  
-      // Process each address individually with much longer delays and retry logic
-    for (let i = 0; i < addressList.length; i++) {
-      const address = addressList[i];
-      
-      // Much more conservative rate limiting
-      if (i > 0) {
-        const delay = 1500; // 1.5 seconds between requests
-        console.log(`⏳ Waiting ${delay}ms before next request...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    
-    try {
-      const apiKey = process.env.BIRDEYE_API_KEY;
-      if (!apiKey) {
-        console.error('Birdeye API proxy: Missing BIRDEYE_API_KEY environment variable');
-        return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
-      }
-
-      const response = await fetch(`https://public-api.birdeye.so/defi/price?address=${address}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'x-chain': 'solana',
-          'X-API-KEY': apiKey,
-          'User-Agent': 'Mozilla/5.0 (compatible; Stockline/1.0)',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        results[address] = data;
-        console.log(`✅ Success: ${address} (${i + 1}/${addressList.length})`);
-      } else if (response.status === 429) {
-        console.log(`⚠️ Rate limited for ${address}, retrying after 2 seconds...`);
-        
-        // Wait 2 seconds and retry once
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        try {
-          const retryResponse = await fetch(`https://public-api.birdeye.so/defi/price?address=${address}`, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'x-chain': 'solana',
-              'X-API-KEY': apiKey,
-              'User-Agent': 'Mozilla/5.0 (compatible; Stockline/1.0)',
-            },
-          });
-          
-          if (retryResponse.ok) {
-            const data = await retryResponse.json();
-            results[address] = data;
-            console.log(`✅ Retry success: ${address}`);
-          } else {
-            console.log(`❌ Retry failed for ${address}: ${retryResponse.status}, using fallback`);
-            results[address] = {
-              success: true,
-              data: {
-                value: 0.01,
-                priceChange24h: 0,
-                updateUnixTime: Math.floor(Date.now() / 1000),
-                updateHumanTime: new Date().toISOString()
-              }
-            };
-          }
-        } catch (retryError) {
-          console.log(`❌ Retry error for ${address}:`, retryError);
-          results[address] = {
-            success: true,
-            data: {
-              value: 0.01,
-              priceChange24h: 0,
-              updateUnixTime: Math.floor(Date.now() / 1000),
-              updateHumanTime: new Date().toISOString()
-            }
-          };
-        }
-      } else {
-        console.log(`❌ Failed for ${address}: ${response.status}, using fallback`);
-        results[address] = {
-          success: true,
-          data: {
-            value: 0.01,
-            priceChange24h: 0,
-            updateUnixTime: Math.floor(Date.now() / 1000),
-            updateHumanTime: new Date().toISOString()
-          }
-        };
-      }
-    } catch (error) {
-      console.log(`❌ Error for ${address}:`, error);
-      results[address] = {
-        success: true,
-        data: {
-          value: 0.01,
-          priceChange24h: 0,
-          updateUnixTime: Math.floor(Date.now() / 1000),
-          updateHumanTime: new Date().toISOString()
-        }
-      };
-    }
-  }
-  
-  console.log(`🎯 Completed processing batch ${batchNum + 1} with ${addressList.length} addresses`);
-  return NextResponse.json(results);
 }

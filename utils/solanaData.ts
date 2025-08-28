@@ -153,11 +153,8 @@ if (typeof window !== 'undefined') {
   setInterval(cleanExpiredCache, 2 * 60 * 1000);
 }
 
-// Rate limiting with exponential backoff
-let lastBirdeyeCall = 0;
-const BIRDEYE_RATE_LIMIT = 3000; // 3 seconds between calls (very conservative)
-let consecutiveFailures = 0;
-const MAX_CONSECUTIVE_FAILURES = 3;
+// Client-side in-flight request coalescing for multi fetches
+const inflightMultiRequests = new Map<string, Promise<any>>();
 
 // Smart cache invalidation based on popularity and timestamp
 function shouldInvalidateCache(tokenAddress: string): boolean {
@@ -224,78 +221,34 @@ function markFetchAsFailed(tokenAddress: string) {
   tokenPriceCache.delete(tokenAddress);
 }
 
-/**
- * Fetch token data from Birdeye API via our proxy (single token)
- */
-async function fetchFromBirdeye(tokenAddress: string): Promise<any> {
-  // Adaptive rate limiting based on failures
-  const now = Date.now();
-  const timeSinceLastCall = now - lastBirdeyeCall;
-  const adaptiveDelay = BIRDEYE_RATE_LIMIT + (consecutiveFailures * 1000); // Increase delay with failures
-  
-  if (timeSinceLastCall < adaptiveDelay) {
-    const waitTime = adaptiveDelay - timeSinceLastCall;
-    console.log(`Rate limiting, waiting ${waitTime}ms (adaptive delay: ${adaptiveDelay}ms)`);
-    await new Promise(resolve => setTimeout(resolve, waitTime));
-  }
-  lastBirdeyeCall = Date.now();
-
-  try {
-    const response = await fetch(`/api/birdeye?address=${tokenAddress}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      consecutiveFailures++;
-      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        console.warn(`Too many consecutive failures (${consecutiveFailures}), increasing delay`);
-        consecutiveFailures = 0; // Reset after max failures
-      }
-      throw new Error(`Birdeye API error: ${response.status}`);
-    }
-    
-    // Reset failure counter on success
-    consecutiveFailures = 0;
-    
-    return response.json();
-  } catch (error) {
-    console.warn(`Birdeye API failed for ${tokenAddress}:`, error);
-    throw error;
-  }
-}
+// Removed legacy single-token GET proxy implementation (migrated to multi POST)
 
 /**
  * Fetch multiple tokens from Birdeye API via our proxy (batch)
  */
 async function fetchBatchFromBirdeye(tokenAddresses: string[]): Promise<any> {
-  // Rate limiting
-  const now = Date.now();
-  const timeSinceLastCall = now - lastBirdeyeCall;
-  if (timeSinceLastCall < BIRDEYE_RATE_LIMIT) {
-    await new Promise(resolve => setTimeout(resolve, BIRDEYE_RATE_LIMIT - timeSinceLastCall));
-  }
-  lastBirdeyeCall = Date.now();
-
-  try {
-    const addressesParam = tokenAddresses.join(',');
-    const response = await fetch(`/api/birdeye?addresses=${addressesParam}`, {
-      method: 'GET',
+  const key = tokenAddresses.slice().sort().join(',');
+  const existing = inflightMultiRequests.get(key);
+  if (existing) return existing;
+  const p = (async () => {
+    const response = await fetch('/api/birdeye', {
+      method: 'POST',
       headers: {
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ addresses: tokenAddresses }),
     });
-    
     if (!response.ok) {
       throw new Error(`Birdeye API error: ${response.status}`);
     }
-    
     return response.json();
-  } catch (error) {
-    console.warn(`Birdeye API batch failed for ${tokenAddresses.length} tokens:`, error);
-    throw error;
+  })();
+  inflightMultiRequests.set(key, p);
+  try {
+    return await p;
+  } finally {
+    inflightMultiRequests.delete(key);
   }
 }
 
@@ -332,8 +285,9 @@ export async function fetchTokenData(tokenAddress: string) {
       };
     }
     
-    console.log(`Fetching price from Birdeye API for ${tokenAddress}`);
-    const birdeyeData = await fetchFromBirdeye(tokenAddress);
+    console.log(`Fetching price via multi proxy for ${tokenAddress}`);
+    const birdeyeDataMap = await fetchBatchFromBirdeye([tokenAddress]);
+    const birdeyeData = birdeyeDataMap[tokenAddress];
     
     // Handle Birdeye API response format based on documentation
     if (birdeyeData.success && birdeyeData.data) {
@@ -453,126 +407,51 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
       }
     });
     
-    // Fetch uncached tokens with robust retry logic
+    // Fetch uncached tokens using the multi POST endpoint in chunks up to 100, in parallel
     if (tokensToFetch.length > 0) {
-      console.log(`Fetching ${tokensToFetch.length} tokens from Birdeye API with robust retry logic`);
-      
-      // Process tokens in smaller batches with retry logic
-      const batchSize = 5; // Smaller batches for better success rate
-      const maxRetries = 2; // Retry failed batches
-      
-      for (let i = 0; i < tokensToFetch.length; i += batchSize) {
-        const batch = tokensToFetch.slice(i, i + batchSize);
-        console.log(`Processing batch ${Math.floor(i / batchSize) + 1}: ${batch.length} tokens`);
-        
-        let batchSuccess = false;
-        let retryCount = 0;
-        
-        while (!batchSuccess && retryCount <= maxRetries) {
-          try {
-            const batchData = await fetchBatchFromBirdeye(batch);
-        
-          // Process the response
-          for (const address of batch) {
-            if (batchData[address] && batchData[address].success && batchData[address].data) {
-              const price = batchData[address].data.value;
-              const change24h = batchData[address].data.priceChange24h;
-              
-              if (price && typeof price === 'number' && !isNaN(price) && price > 0) {
-                const tokenData = {
-                  price: Number(price.toFixed(8)),
-                  marketCap: Math.round(price * 1000000000),
-                  volume24h: Math.round(price * 10000000),
-                  change24h: change24h ? Number(change24h.toFixed(2)) : Number(((Math.random() - 0.5) * 10).toFixed(2))
-                };
-                
-                // Cache accurate data
-                tokenPriceCache.set(address, { 
-                  ...tokenData, 
-                  timestamp: now,
-                  isAccurate: true
-                });
-                
-                // Remove from failed fetch cache
-                failedFetchCache.delete(address);
-                
-                dataMap.set(address, tokenData);
-                console.log(`✅ Success: ${address} - $${price.toFixed(4)}`);
-              } else {
-                // Mark as failed fetch for tokens without valid prices
-                markFetchAsFailed(address);
-                
-                // Try to get the last cached price as fallback
-                const cachedData = tokenPriceCache.get(address);
-                const fallbackPrice = cachedData?.price || 0;
-                
-                dataMap.set(address, {
-                  price: fallbackPrice,
-                  marketCap: cachedData?.marketCap || 0,
-                  volume24h: cachedData?.volume24h || 0,
-                  change24h: cachedData?.change24h || 0
-                });
-                console.log(`⚠️ Failed: ${address} - No valid price, using ${cachedData?.price ? 'cached' : 'default'} fallback: $${fallbackPrice}`);
-              }
-            } else {
-              // Mark as failed fetch for tokens not in response
-              markFetchAsFailed(address);
-              
-              // Try to get the last cached price as fallback
-              const cachedData = tokenPriceCache.get(address);
-              const fallbackPrice = cachedData?.price || 0;
-              
-              dataMap.set(address, {
-                price: fallbackPrice,
-                marketCap: cachedData?.marketCap || 0,
-                volume24h: cachedData?.volume24h || 0,
-                change24h: cachedData?.change24h || 0
-              });
-              console.log(`⚠️ Failed: ${address} - Not in response, using ${cachedData?.price ? 'cached' : 'default'} fallback: $${fallbackPrice}`);
-            }
+      const chunks: string[][] = [];
+      for (let i = 0; i < tokensToFetch.length; i += 100) {
+        chunks.push(tokensToFetch.slice(i, i + 100));
+      }
+      const responses = await Promise.all(chunks.map(chunk => fetchBatchFromBirdeye(chunk)));
+      const combined = Object.assign({}, ...responses);
+
+      for (const address of tokensToFetch) {
+        const node = combined[address];
+        if (node && node.success && node.data) {
+          const price = node.data.value;
+          const change24h = node.data.priceChange24h;
+          if (typeof price === 'number' && price > 0) {
+            const tokenData = {
+              price: Number(price.toFixed(8)),
+              marketCap: Math.round(price * 1000000000),
+              volume24h: Math.round(price * 10000000),
+              change24h: typeof change24h === 'number' ? Number(change24h.toFixed(2)) : 0
+            };
+            tokenPriceCache.set(address, { ...tokenData, timestamp: now, isAccurate: true });
+            failedFetchCache.delete(address);
+            dataMap.set(address, tokenData);
+          } else {
+            markFetchAsFailed(address);
+            const cachedData = tokenPriceCache.get(address);
+            const fallbackPrice = cachedData?.price || 0;
+            dataMap.set(address, {
+              price: fallbackPrice,
+              marketCap: cachedData?.marketCap || 0,
+              volume24h: cachedData?.volume24h || 0,
+              change24h: cachedData?.change24h || 0
+            });
           }
-          
-            batchSuccess = true;
-            
-            // Add delay between batches to respect rate limits
-            if (i + batchSize < tokensToFetch.length) {
-              console.log(`⏳ Waiting 4 seconds before next batch...`);
-              await new Promise(resolve => setTimeout(resolve, 4000));
-            }
-          } catch (batchError) {
-            retryCount++;
-            console.warn(`Batch ${Math.floor(i / batchSize) + 1} failed (attempt ${retryCount}/${maxRetries + 1}):`, batchError);
-            
-            if (retryCount <= maxRetries) {
-              console.log(`⏳ Retrying batch in ${retryCount * 2} seconds...`);
-              await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
-            } else {
-              console.warn(`Batch ${Math.floor(i / batchSize) + 1} failed after ${maxRetries + 1} attempts, falling back to individual fetches`);
-              
-              // Fallback to individual fetches for this batch
-              for (const address of batch) {
-                try {
-                  const data = await fetchTokenData(address);
-                  dataMap.set(address, data);
-                } catch (individualError) {
-                  console.error(`Failed to fetch ${address}:`, individualError);
-                  markFetchAsFailed(address);
-                  
-                  // Try to get the last cached price as fallback
-                  const cachedData = tokenPriceCache.get(address);
-                  const fallbackPrice = cachedData?.price || 0;
-                  
-                  dataMap.set(address, {
-                    price: fallbackPrice,
-                    marketCap: cachedData?.marketCap || 0,
-                    volume24h: cachedData?.volume24h || 0,
-                    change24h: cachedData?.change24h || 0
-                  });
-                  console.log(`Individual fetch failed for ${address}, using ${cachedData?.price ? 'cached' : 'default'} fallback: $${fallbackPrice}`);
-                }
-              }
-            }
-          }
+        } else {
+          markFetchAsFailed(address);
+          const cachedData = tokenPriceCache.get(address);
+          const fallbackPrice = cachedData?.price || 0;
+          dataMap.set(address, {
+            price: fallbackPrice,
+            marketCap: cachedData?.marketCap || 0,
+            volume24h: cachedData?.volume24h || 0,
+            change24h: cachedData?.change24h || 0
+          });
         }
       }
     }
@@ -663,11 +542,13 @@ export async function fetchMultipleTokensDataProgressive(
             const addressesParam = batch.join(',');
             console.log(`🌐 Making API request for batch ${batchIndex + 1}...`);
             
-            const response = await fetch(`/api/birdeye?addresses=${addressesParam}&batchIndex=${batchIndex}`, {
-              method: 'GET',
+            const response = await fetch('/api/birdeye', {
+              method: 'POST',
               headers: {
                 'Accept': 'application/json',
+                'Content-Type': 'application/json',
               },
+              body: JSON.stringify({ addresses: batch })
             });
             
             if (!response.ok) {
