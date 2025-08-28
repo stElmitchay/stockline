@@ -81,35 +81,11 @@
       "isAvailable": true
     },
     {
-      "symbol": "MSFTx",
-      "name": "Microsoft xStock",
-      "solanaAddress": "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
-      "solscanUrl": "https://solscan.io/token/XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
-      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/MSFT.png",
-      "isAvailable": false
-    },
-    {
       "symbol": "AMZNx",
       "name": "Amazon xStock",
       "solanaAddress": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
       "solscanUrl": "https://solscan.io/token/Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
       "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/AMZN.png",
-      "isAvailable": false
-    },
-    {
-      "symbol": "Vx",
-      "name": "Visa xStock",
-      "solanaAddress": "XsqgsbXwWogGJsNcVZ3TyVouy2MbTkfCFhCGGGcQZ2p",
-      "solscanUrl": "https://solscan.io/token/XsqgsbXwWogGJsNcVZ3TyVouy2MbTkfCFhCGGGcQZ2p",
-      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/V.png",
-      "isAvailable": false
-    },
-    {
-      "symbol": "NFLXx",
-      "name": "Netflix xStock",
-      "solanaAddress": "XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL",
-      "solscanUrl": "https://solscan.io/token/XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL",
-      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/NFLX.png",
       "isAvailable": false
     },
     {
@@ -153,12 +129,36 @@
       "isAvailable": false
     },
     {
+      "symbol": "MSFTx",
+      "name": "Microsoft xStock",
+      "solanaAddress": "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
+      "solscanUrl": "https://solscan.io/token/XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/MSFT.png",
+      "isAvailable": false
+    },
+    {
       "symbol": "QQQx",
       "name": "Nasdaq xStock",
       "solanaAddress": "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
       "solscanUrl": "https://solscan.io/token/Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
       "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/QQQ.png",
       "isAvailable": false
-    }
+    },
+    {
+      "symbol": "NFLXx",
+      "name": "Netflix xStock",
+      "solanaAddress": "XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL",
+      "solscanUrl": "https://solscan.io/token/XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/NFLX.png",
+      "isAvailable": false
+    },
+    {
+      "symbol": "Vx",
+      "name": "Visa xStock",
+      "solanaAddress": "XsqgsbXwWogGJsNcVZ3TyVouy2MbTkfCFhCGGGcQZ2p",
+      "solscanUrl": "https://solscan.io/token/XsqgsbXwWogGJsNcVZ3TyVouy2MbTkfCFhCGGGcQZ2p",
+      "logoUrl": "https://raw.githubusercontent.com/davidepalazzo/ticker-logos/main/ticker_icons/V.png",
+      "isAvailable": false
+    }  
   ]
 }
