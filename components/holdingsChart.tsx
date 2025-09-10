@@ -27,27 +27,21 @@ export function HoldingsChart({ walletAddress, currentValue }: HoldingsChartProp
         setLoading(true);
         setError(null);
 
-        const response = await fetch('/api/airtable/get-holdings-history', {
+        const response = await fetch('/api/wallet/holdings-trend', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ walletAddress }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress })
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch holdings history');
+          throw new Error('Failed to fetch holdings trend');
         }
 
         const data = await response.json();
-        
-        if (data.success && data.holdingsHistory) {
-          setHoldingsData(data.holdingsHistory);
-        } else {
-          setHoldingsData([]);
-        }
+        const points = data.points || [];
+        setHoldingsData(points);
       } catch (err) {
-        console.error('Error fetching holdings history:', err);
+        console.error('Error fetching holdings trend:', err);
         // Keep UI clean; log the error but avoid noisy on-screen message
         setError('failed');
         setHoldingsData([]);

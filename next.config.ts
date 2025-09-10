@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
 	/* config options here */
+	compiler: {
+		// Strip console.* only in production to avoid dev chunk issues
+		removeConsole: process.env.NODE_ENV === 'production',
+	},
 	eslint: {
 		ignoreDuringBuilds: true,
 	},

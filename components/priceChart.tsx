@@ -91,3 +91,7 @@ export function PriceChart({ symbol, currentPrice }: Props) {
 
 
 
+
+
+
+

@@ -4,23 +4,32 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-	// Suppress console errors for token metadata fetching
 	if (typeof window !== 'undefined') {
-		const originalConsoleError = console.error;
-		console.error = (...args) => {
-			// Filter out Privy token metadata errors
-			const message = args.join(' ');
-			if (
-				message.includes('Unable to fetch token metadata') ||
-				message.includes('spl_token_info') ||
-				message.includes('404 (Not Found)')
-			) {
-				// Silently ignore these errors
-				return;
-			}
-			// Log other errors normally
-			originalConsoleError.apply(console, args);
-		};
+		// In production, silence ALL client console methods unless explicitly enabled
+		if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_DEBUG !== 'true') {
+			const noop = () => {};
+			console.log = noop;
+			console.info = noop;
+			console.debug = noop;
+			console.warn = noop;
+			console.error = noop;
+			console.trace = noop;
+			console.group = noop;
+			console.groupCollapsed = noop;
+			console.groupEnd = noop;
+			console.table = noop as any;
+			console.time = noop as any;
+			console.timeEnd = noop as any;
+			console.timeLog = noop as any;
+			console.dir = noop as any;
+			console.dirxml = noop as any;
+			console.assert = noop as any;
+			console.count = noop as any;
+			console.countReset = noop as any;
+			console.profile = noop as any;
+			console.profileEnd = noop as any;
+			console.clear = noop as any;
+		}
 	}
 
 	return (

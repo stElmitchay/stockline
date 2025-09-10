@@ -51,7 +51,8 @@ async function findCashoutRecord(email: string, walletAddress: string) {
   
   const params = new URLSearchParams({
     filterByFormula: filterFormula,
-    sort: JSON.stringify([{field: 'Created', direction: 'desc'}]),
+    'sort[0][field]': 'Created',
+    'sort[0][direction]': 'desc',
     maxRecords: '1'
   });
   

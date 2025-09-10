@@ -65,6 +65,7 @@ export function CashoutModal({
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [pendingCashoutData, setPendingCashoutData] = useState<any>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [finalSuccess, setFinalSuccess] = useState<{ transactionHash: string } | null>(null);
   const { wallets } = useSolanaWallets();
   const { signTransaction } = useSignTransaction();
   const { user } = usePrivy();
@@ -335,17 +336,21 @@ export function CashoutModal({
       }
           
           // Handle success for multi-instruction transaction
-           setAmount('');
-           setEmail('');
-           setMobileNumber('');
-           setFormSubmitted(false);
-           setPendingCashoutData(null);
-           setLoading(false);
-           setError('');
-          
-          // Show success message or redirect
+          setAmount('');
+          setEmail('');
+          setMobileNumber('');
+          setFormSubmitted(false);
+          setPendingCashoutData(null);
+          setLoading(false);
+          setError('');
+
+          // Show final success receipt instead of closing immediately
           console.log(`Transaction successful! Hash: ${result.transactionHash}`);
-          onClose();
+          setFinalSuccess({ transactionHash: result.transactionHash });
+          // Also notify parent that the pending flow is complete
+          if (onFormSubmitted) {
+            onFormSubmitted(null);
+          }
           return;
         } else {
           // Use transfer_checked for TOKEN_2022 tokens, regular transfer for TOKEN_PROGRAM tokens
@@ -437,14 +442,14 @@ export function CashoutModal({
         // Don't fail the entire process if Airtable update fails
       }
       
-      // Reset form and close modal
+      // Reset form state and show final success receipt (avoid immediate close)
       setAmount("");
       setEmail("");
       setMobileNumber("");
       setFormSubmitted(false);
       setPendingCashoutData(null); // Clear internal state
       setLoading(false);
-      onClose();
+      setFinalSuccess({ transactionHash });
       
       // Notify parent to clear pending data
       if (onFormSubmitted) {
@@ -469,8 +474,8 @@ export function CashoutModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={showTransactionScreen ? "Complete Transaction" : "Cash Out"}
-      description={showTransactionScreen ? "Complete your cashout transaction" : "Submit your cashout request"}
+      title={finalSuccess ? "Cashout Successful" : (showTransactionScreen ? "Complete Transaction" : "Cash Out")}
+      description={finalSuccess ? "Your cashout has been submitted successfully" : (showTransactionScreen ? "Complete your cashout transaction" : "Submit your cashout request")}
     >
       <div className="max-w-md mx-auto p-6 rounded-2xl shadow-2xl transition-all duration-300"
            style={{
@@ -479,6 +484,39 @@ export function CashoutModal({
              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
              backdropFilter: 'blur(10px)'
            }}>
+        {finalSuccess && (
+          <div className="mb-4 p-6 rounded-lg border border-green-500/30"
+               style={{
+                 background: 'rgba(16, 185, 129, 0.1)',
+                 backdropFilter: 'blur(5px)'
+               }}>
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg"
+                     style={{ boxShadow: '0 4px 15px rgba(34, 197, 94, 0.4)' }}>
+                  <Check className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-green-400">Cashout Successful</h3>
+              </div>
+              <p className="text-sm text-gray-300">Transaction submitted. You will receive confirmation shortly.</p>
+              {/* Intentionally hide hash per UX request */}
+              <div className="pt-2">
+                <Button
+                  onClick={() => { setFinalSuccess(null); onClose(); }}
+                  className="w-full font-medium py-3 rounded-lg transition-all duration-300"
+                  style={{
+                    background: 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
+                    color: '#000000',
+                    border: '1px solid rgba(217, 255, 102, 0.3)',
+                    boxShadow: '0 4px 15px rgba(217, 255, 102, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  }}
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {error && (
           <div className="mb-4 p-3 rounded-lg flex items-center gap-2"
@@ -531,7 +569,7 @@ export function CashoutModal({
           </div>
         )}
         
-        {!showSuccessMessage && !showTransactionScreen && (
+        {!finalSuccess && !showSuccessMessage && !showTransactionScreen && (
           // Cashout Form View
           <form className="space-y-6" noValidate>
             <div className="space-y-4">
@@ -718,7 +756,7 @@ export function CashoutModal({
           </form>
         )}
         
-        {!showSuccessMessage && showTransactionScreen && (
+        {!finalSuccess && !showSuccessMessage && showTransactionScreen && (
           // Transaction Confirmation View
           <div className="space-y-6">
             <div className="text-center space-y-4 mb-6">
