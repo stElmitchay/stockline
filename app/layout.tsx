@@ -82,6 +82,7 @@ export default function RootLayout({
 				<ErrorBoundary>
 					<Providers>{children}</Providers>
 				</ErrorBoundary>
+				<Analytics />
 			</body>
 		</html>
 	);
