@@ -1,8 +1,106 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Buffer } from 'node:buffer';
+
+export const runtime = 'nodejs';
 
 // Airtable configuration
 const AIRTABLE_BASE_ID = 'appipJcYVv4Grvglt';
 const AIRTABLE_TABLE_ID = 'tblNkOxBSMWJ3iCbK';
+
+// Helper: upload image to IMGBB (if API key configured)
+async function uploadImageToImgbb(file: File): Promise<string | null> {
+  try {
+    const apiKey = process.env.IMGBB_API_KEY;
+    if (!apiKey) return null;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+    const body = new URLSearchParams();
+    body.set('key', apiKey);
+    body.set('image', base64);
+    body.set('name', file.name);
+
+    const res = await fetch('https://api.imgbb.com/1/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('IMGBB upload failed:', text);
+      return null;
+    }
+    const data = await res.json();
+    const url = data?.data?.url as string | undefined;
+    return url || null;
+  } catch (err) {
+    console.error('IMGBB upload error:', err);
+    return null;
+  }
+}
+
+// Fallback: upload to 0x0.st (no-auth, public, potentially ephemeral)
+async function uploadImageTo0x0(file: File): Promise<string | null> {
+  try {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    const res = await fetch('https://0x0.st', {
+      method: 'POST',
+      body: form,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('0x0.st upload failed:', text);
+      return null;
+    }
+    const text = await res.text();
+    // 0x0.st returns a plain URL in the body
+    const url = text.trim();
+    if (!url.startsWith('http')) return null;
+    return url;
+  } catch (err) {
+    console.error('0x0.st upload error:', err);
+    return null;
+  }
+}
+
+// Fallback: upload to tmpfiles.org (no auth). Public link typically valid for days.
+async function uploadImageToTmpfiles(file: File): Promise<string | null> {
+  try {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    const res = await fetch('https://tmpfiles.org/api/v1/upload', {
+      method: 'POST',
+      body: form,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('tmpfiles upload failed:', text);
+      return null;
+    }
+    const data = await res.json();
+    const url = data?.data?.url as string | undefined;
+    if (!url) return null;
+    // Convert the landing page URL to the direct download URL Airtable can fetch
+    // Example: https://tmpfiles.org/abcd -> https://tmpfiles.org/dl/abcd
+    try {
+      const u = new URL(url);
+      if (!u.pathname.startsWith('/dl/')) {
+        u.pathname = '/dl' + (u.pathname.endsWith('/') ? u.pathname.slice(0, -1) : u.pathname);
+      }
+      return u.toString();
+    } catch {
+      return url;
+    }
+  } catch (err) {
+    console.error('tmpfiles upload error:', err);
+    return null;
+  }
+}
 
 // Helper function to create Airtable record using MCP server
 async function createAirtableRecord(fields: Record<string, any>): Promise<any> {
@@ -103,13 +201,31 @@ export async function POST(request: NextRequest) {
 
     // Handle file upload if present
     if (paymentReceipt && paymentReceipt.size > 0) {
-      try {
-        // For now, we'll store file info as text since direct file upload is complex
-        airtableFields['Notes'] = `Payment receipt uploaded: ${paymentReceipt.name} (${paymentReceipt.size} bytes)`;
-      } catch (fileError) {
-        console.error('Error processing file:', fileError);
-        // Continue without file if there's an error
+      const allowedTypes = ['image/jpeg', 'image/png'];
+      if (!allowedTypes.includes((paymentReceipt as any).type)) {
+        return NextResponse.json(
+          { error: 'Only JPG or PNG images are accepted.' },
+          { status: 400 }
+        );
       }
+      // Try uploading to IMGBB if configured; fall back to tmpfiles, then 0x0.st
+      let hostedUrl = await uploadImageToImgbb(paymentReceipt);
+      if (!hostedUrl) hostedUrl = await uploadImageToTmpfiles(paymentReceipt);
+      if (!hostedUrl) hostedUrl = await uploadImageTo0x0(paymentReceipt);
+      if (!hostedUrl) {
+        return NextResponse.json(
+          { error: 'Failed to upload payment receipt. Please try again or try a smaller image.' },
+          { status: 400 }
+        );
+      }
+      const attachment = [
+        {
+          url: hostedUrl,
+          filename: paymentReceipt.name,
+        },
+      ];
+      // Only set the exact field name provided
+      airtableFields['Payment Receipt'] = attachment;
     }
 
     // Create record in Airtable
@@ -118,7 +234,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       recordId: result.id,
-      message: 'Stock purchase request submitted successfully'
+      message: 'Stock purchase request submitted successfully',
+      // For debugging: surface what we attempted to set
+      attachmentDebug: {
+        hasPaymentReceiptField: Boolean(airtableFields['Payment Receipt']),
+      }
     });
 
   } catch (error) {

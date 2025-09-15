@@ -154,6 +154,14 @@ export default function StockPurchaseForm({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+    if (file) {
+      const allowedTypes = ['image/jpeg', 'image/png'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Only JPG or PNG images are accepted.');
+        setFormData(prev => ({ ...prev, paymentReceipt: null }));
+        return;
+      }
+    }
     setFormData(prev => ({ ...prev, paymentReceipt: file }));
     setError(null);
   };
@@ -799,7 +807,7 @@ export default function StockPurchaseForm({
               <input
                 type="file"
                 onChange={handleFileChange}
-                accept="image/*,.pdf"
+                accept="image/png,image/jpeg"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 required
               />
