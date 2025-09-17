@@ -86,37 +86,55 @@ export default function PwaInstallPrompt() {
     <div
       role="dialog"
       aria-live="polite"
-      className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-lg dark:border-gray-800 dark:bg-black"
+      className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(env(safe-area-inset-bottom),16px)]"
     >
-      {iosMode ? (
-        <div className="flex items-center gap-3">
-          <div className="text-sm">
-            Add this app to your Home Screen: tap the Share icon, then "Add to Home Screen".
+      <div className="mx-auto w-full max-w-md rounded-2xl border border-gray-200 bg-white/95 p-4 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-gray-800 dark:bg-black/80">
+        <div className="flex items-start gap-3">
+          <img src="/icons/icon-192x192.png" alt="App icon" className="h-8 w-8 rounded-lg" />
+          <div className="flex-1">
+            {iosMode ? (
+              <>
+                <p className="text-base font-medium">Add to Home Screen</p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Tap the Share icon, then <span className="font-medium">Add to Home Screen</span>.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-medium">Install Stockline</p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Get a faster, fullscreen experience with offline support.
+                </p>
+              </>
+            )}
+            <div className="mt-3 flex gap-2">
+              {iosMode ? (
+                <button
+                  onClick={handleDismiss}
+                  className="h-11 flex-1 rounded-xl bg-black text-white dark:bg-white dark:text-black text-sm font-medium"
+                >
+                  Got it
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleInstall}
+                    className="h-11 flex-1 rounded-xl bg-black text-white dark:bg-white dark:text-black text-sm font-medium"
+                  >
+                    Install
+                  </button>
+                  <button
+                    onClick={handleDismiss}
+                    className="h-11 flex-1 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900"
+                  >
+                    Not now
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <button
-            onClick={handleDismiss}
-            className="rounded-md border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900"
-          >
-            Dismiss
-          </button>
         </div>
-      ) : (
-        <div className="flex items-center gap-3">
-          <div className="text-sm">Install this app for a better, fullscreen experience.</div>
-          <button
-            onClick={handleInstall}
-            className="rounded-md bg-black px-3 py-1 text-sm text-white dark:bg-white dark:text-black"
-          >
-            Install
-          </button>
-          <button
-            onClick={handleDismiss}
-            className="rounded-md border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
