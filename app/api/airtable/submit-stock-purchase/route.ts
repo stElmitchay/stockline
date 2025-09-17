@@ -175,15 +175,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate the total amount including fees
+    // Calculate amounts
     const originalAmount = parseFloat(amountInLeones);
-    const totalAmountWithFees = originalAmount + totalFees;
+    const netAmountAfterFees = originalAmount - totalFees; // what user actually gets in SLL
 
     // Prepare Airtable fields
     const airtableFields: Record<string, any> = {
       'Email': email,
       'Mobile Number': mobileNumber,
-      'Amount in Leones': totalAmountWithFees, // Store total amount including all fees
+      // Store the net amount after fees so Airtable reflects the stock-credit amount
+      'Amount in Leones': netAmountAfterFees,
       'Stock Ticker': stockTicker,
       'Wallet Address': walletAddress,
       'Confirmation 1': confirmation1,
@@ -196,7 +197,9 @@ export async function POST(request: NextRequest) {
 
     // Add onboarding fee information if applicable
     if (isFirstTimePurchase && onboardingFeeInLeones > 0) {
-      airtableFields['Notes'] = `First-time purchase with $5 onboarding fee (${onboardingFeeInLeones.toFixed(2)} SLL). Original amount: ${originalAmount.toFixed(2)} SLL, Total fees: ${totalFees.toFixed(2)} SLL`;
+      airtableFields['Notes'] = `First-time purchase. Original paid: ${originalAmount.toFixed(2)} SLL. Fees: ${totalFees.toFixed(2)} SLL (incl. onboarding ${onboardingFeeInLeones.toFixed(2)} SLL). Net credited: ${netAmountAfterFees.toFixed(2)} SLL.`;
+    } else {
+      airtableFields['Notes'] = `Original paid: ${originalAmount.toFixed(2)} SLL. Fees: ${totalFees.toFixed(2)} SLL. Net credited: ${netAmountAfterFees.toFixed(2)} SLL.`;
     }
 
     // Handle file upload if present

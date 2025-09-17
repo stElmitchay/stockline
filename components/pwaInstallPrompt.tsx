@@ -94,7 +94,7 @@ export default function PwaInstallPrompt() {
           <div className="flex-1">
             {iosMode ? (
               <>
-                <p className="text-base font-medium">Add to Home Screen</p>
+                <p className="text-base font-medium">Install Stockline app</p>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                   Tap the Share icon, then <span className="font-medium">Add to Home Screen</span>.
                 </p>
