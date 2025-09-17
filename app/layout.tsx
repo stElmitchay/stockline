@@ -18,8 +18,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
 	title: "Stockline",
 	description: "Own a piece of a company you use everyday",
+	manifest: "/manifest.webmanifest",
+	themeColor: "#0b0b0f",
 	icons: {
 		icon: '/favicon.svg',
+		apple: '/apple-touch-icon.png',
 	},
 	// Open Graph / Facebook
 	openGraph: {

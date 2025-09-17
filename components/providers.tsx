@@ -2,6 +2,21 @@
 
 import { PrivyProvider } from "@privy-io/react-auth";
 import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
+import dynamic from "next/dynamic";
+const PwaInstallPrompt = dynamic(() => import("./pwaInstallPrompt"), { ssr: false });
+
+function registerServiceWorker() {
+  if (typeof window === 'undefined') return;
+  if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .catch(() => {
+          // swallow errors silently in production
+        });
+    });
+  }
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
 	if (typeof window !== 'undefined') {
@@ -30,6 +45,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 			console.profileEnd = noop as any;
 			console.clear = noop as any;
 		}
+
+		// Register service worker in production
+		registerServiceWorker();
 	}
 
 	return (
@@ -42,6 +60,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 			}}
 		>
 			{children}
+			<PwaInstallPrompt />
 		</PrivyProvider>
 	);
 }
