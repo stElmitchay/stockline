@@ -20,6 +20,17 @@ function registerServiceWorker() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
 	if (typeof window !== 'undefined') {
+		// Filter out browser extension errors in all environments
+		const originalError = console.error;
+		console.error = (...args: any[]) => {
+			const message = args[0]?.toString() || '';
+			// Suppress Chrome extension Privy origin errors
+			if (message.includes('origins don\'t match') && message.includes('auth.privy.io')) {
+				return;
+			}
+			originalError.apply(console, args);
+		};
+
 		// In production, silence ALL client console methods unless explicitly enabled
 		if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_DEBUG !== 'true') {
 			const noop = () => {};

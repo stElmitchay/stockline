@@ -1,11 +1,24 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { EXTERNAL_URLS } from '@/constants';
 
-// Define a connection to Solana mainnet
-const connection = new Connection('https://api.mainnet-beta.solana.com', {
+// Use configured RPC endpoint or fallback to public mainnet
+const getRpcEndpoint = () => {
+  // Prefer custom mainnet RPC if configured (better rate limits)
+  if (process.env.SOLANA_MAINNET_RPC_URL) {
+    return process.env.SOLANA_MAINNET_RPC_URL;
+  }
+  // Fallback to public mainnet (has rate limits)
+  return 'https://api.mainnet-beta.solana.com';
+};
+
+const connection = new Connection(getRpcEndpoint(), {
   commitment: 'confirmed',
   confirmTransactionInitialTimeout: 60000
 });
+
+// Cache for token supply data
+const tokenSupplyCache = new Map<string, { supply: number; timestamp: number }>();
+const SUPPLY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours (supply rarely changes)
 
 // Define the structure for cached token data
 interface CachedTokenData {
@@ -145,8 +158,117 @@ function cleanExpiredCache() {
   }
 }
 
+/**
+ * Fetch token supply from Solana RPC with Birdeye fallback
+ */
+async function fetchTokenSupply(tokenAddress: string): Promise<number> {
+  try {
+    // Check cache first
+    const cached = tokenSupplyCache.get(tokenAddress);
+    if (cached && Date.now() - cached.timestamp < SUPPLY_CACHE_TTL) {
+      return cached.supply;
+    }
+
+    // Try Solana RPC first
+    try {
+      const publicKey = new PublicKey(tokenAddress);
+      const supply = await connection.getTokenSupply(publicKey);
+
+      if (supply?.value?.uiAmount && supply.value.uiAmount > 0) {
+        const supplyAmount = supply.value.uiAmount;
+
+        // Cache the result
+        tokenSupplyCache.set(tokenAddress, {
+          supply: supplyAmount,
+          timestamp: Date.now()
+        });
+
+        // Save to localStorage
+        if (typeof window !== 'undefined') {
+          try {
+            const supplyData = Object.fromEntries(tokenSupplyCache.entries());
+            localStorage.setItem('solana_token_supply_cache', JSON.stringify(supplyData));
+          } catch (err) {
+            console.warn('Failed to save supply cache:', err);
+          }
+        }
+
+        return supplyAmount;
+      }
+    } catch (rpcError) {
+      console.warn(`RPC supply fetch failed for ${tokenAddress}, trying Birdeye fallback`);
+
+      // Fallback to Birdeye if RPC fails
+      const apiKey = process.env.BIRDEYE_API_KEY || process.env.NEXT_PUBLIC_BIRDEYE_API_KEY;
+      if (apiKey) {
+        try {
+          const response = await fetch(`https://public-api.birdeye.so/defi/token_overview?address=${tokenAddress}`, {
+            method: 'GET',
+            headers: {
+              'X-API-KEY': apiKey,
+              'x-chain': 'solana'
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              const supplyAmount = data.data.circulatingSupply || data.data.totalSupply;
+
+              if (supplyAmount && typeof supplyAmount === 'number' && supplyAmount > 0) {
+                // Cache the result
+                tokenSupplyCache.set(tokenAddress, {
+                  supply: supplyAmount,
+                  timestamp: Date.now()
+                });
+
+                // Save to localStorage
+                if (typeof window !== 'undefined') {
+                  try {
+                    const supplyData = Object.fromEntries(tokenSupplyCache.entries());
+                    localStorage.setItem('solana_token_supply_cache', JSON.stringify(supplyData));
+                  } catch (err) {
+                    console.warn('Failed to save supply cache:', err);
+                  }
+                }
+
+                return supplyAmount;
+              }
+            }
+          }
+        } catch (birdeyeError) {
+          console.warn(`Birdeye fallback also failed for ${tokenAddress}`);
+        }
+      }
+    }
+
+    // Final fallback to 1 billion estimate
+    console.warn(`No valid supply data for ${tokenAddress}, using 1B estimate`);
+    return 1000000000;
+  } catch (error) {
+    console.warn(`Error fetching token supply for ${tokenAddress}:`, error);
+    return 1000000000;
+  }
+}
+
 // Initialize cache on module load
 initializeCacheFromStorage();
+
+// Load supply cache from localStorage
+if (typeof window !== 'undefined') {
+  try {
+    const supplyData = localStorage.getItem('solana_token_supply_cache');
+    if (supplyData) {
+      const parsed = JSON.parse(supplyData);
+      Object.entries(parsed).forEach(([address, data]: [string, any]) => {
+        tokenSupplyCache.set(address, data);
+      });
+      console.log(`Loaded ${tokenSupplyCache.size} token supplies from localStorage`);
+    }
+  } catch (err) {
+    console.warn('Failed to load supply cache:', err);
+  }
+}
 
 // Clean expired cache every 2 minutes
 if (typeof window !== 'undefined') {
@@ -296,11 +418,14 @@ export async function fetchTokenData(tokenAddress: string) {
       
       if (price && typeof price === 'number' && !isNaN(price) && price > 0) {
         console.log(`Birdeye API success for ${tokenAddress}: $${price.toFixed(4)}`);
-        
+
+        // Fetch actual token supply for accurate market cap
+        const supply = await fetchTokenSupply(tokenAddress);
+
         const tokenData = {
           price: Number(price.toFixed(8)),
-          marketCap: Math.round(price * 1000000000), // Estimate: 1B token supply
-          volume24h: Math.round(price * 10000000), // Estimate: 10M daily volume
+          marketCap: Math.round(price * supply / 1000), // Adjusted: price × supply / 1000 for xStocks
+          volume24h: Math.round(price * 10000), // Adjusted: 10K daily volume for xStocks
           change24h: change24h ? Number(change24h.toFixed(2)) : Number(((Math.random() - 0.5) * 10).toFixed(2))
         };
         
@@ -422,10 +547,13 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
           const price = node.data.value;
           const change24h = node.data.priceChange24h;
           if (typeof price === 'number' && price > 0) {
+            // Fetch actual token supply for accurate market cap
+            const supply = await fetchTokenSupply(address);
+
             const tokenData = {
               price: Number(price.toFixed(8)),
-              marketCap: Math.round(price * 1000000000),
-              volume24h: Math.round(price * 10000000),
+              marketCap: Math.round(price * supply / 1000), // Adjusted: price × supply / 1000 for xStocks
+              volume24h: Math.round(price * 10000), // Adjusted: 10K daily volume for xStocks
               change24h: typeof change24h === 'number' ? Number(change24h.toFixed(2)) : 0
             };
             tokenPriceCache.set(address, { ...tokenData, timestamp: now, isAccurate: true });
@@ -566,18 +694,21 @@ export async function fetchMultipleTokensDataProgressive(
                 const change24h = batchData[address].data.priceChange24h;
                 
                 if (price && typeof price === 'number' && !isNaN(price) && price > 0) {
+                  // Fetch actual token supply for accurate market cap
+                  const supply = await fetchTokenSupply(address);
+
                   const tokenData = {
                     price: Number(price.toFixed(8)),
-                    marketCap: Math.round(price * 1000000000),
-                    volume24h: Math.round(price * 10000000),
+                    marketCap: Math.round(price * supply / 1000), // Adjusted: price × supply / 1000 for xStocks
+                    volume24h: Math.round(price * 10000), // Adjusted: 10K daily volume for xStocks
                     change24h: change24h ? Number(change24h.toFixed(2)) : Number(((Math.random() - 0.5) * 10).toFixed(2))
                   };
-                  
+
                   tokenPriceCache.set(address, { ...tokenData, timestamp: now, isAccurate: true });
                   trackTokenAccess(address); // Track access for cache management
                   dataMap.set(address, tokenData);
                   successfulTokens++;
-                  console.log(`✅ Success: ${address} - $${price.toFixed(4)}`);
+                  console.log(`✅ Success: ${address} - $${price.toFixed(4)} (Market Cap: $${tokenData.marketCap.toLocaleString()})`);
                 } else {
                   // Mark as failed fetch for tokens without valid prices
                   markFetchAsFailed(address);
@@ -718,19 +849,21 @@ export function clearPriceCache(): void {
   failedFetchCache.clear();
   tokenAccessCount.clear();
   tokenLastAccess.clear();
-  
+  tokenSupplyCache.clear();
+
   // Clear localStorage as well
   if (typeof window !== 'undefined') {
     localStorage.removeItem(CACHE_CONFIG.STORAGE_KEY);
     localStorage.removeItem(CACHE_CONFIG.FAILED_FETCH_KEY);
     localStorage.removeItem(CACHE_CONFIG.ACCESS_COUNT_KEY);
     localStorage.removeItem(CACHE_CONFIG.LAST_ACCESS_KEY);
+    localStorage.removeItem('solana_token_supply_cache');
     // Clear session-based cache tracking
     sessionStorage.removeItem('cache_warmed_session');
     sessionStorage.removeItem('stocks_initialized');
   }
-  
-  console.log('Price cache, failed fetch cache, and session data cleared');
+
+  console.log('Price cache, supply cache, failed fetch cache, and session data cleared');
 }
 
 /**
@@ -763,6 +896,7 @@ export function getCacheStats() {
   return {
     accurateCacheSize: tokenPriceCache.size,
     failedFetchSize: failedFetchCache.size,
+    supplyCacheSize: tokenSupplyCache.size,
     accurateEntries: Array.from(tokenPriceCache.entries()).map(([address, data]) => ({
       address,
       price: data.price,
@@ -772,6 +906,11 @@ export function getCacheStats() {
     failedEntries: Array.from(failedFetchCache.entries()).map(([address, data]) => ({
       address,
       attemptCount: data.attemptCount,
+      age: Date.now() - data.timestamp
+    })),
+    supplyEntries: Array.from(tokenSupplyCache.entries()).map(([address, data]) => ({
+      address,
+      supply: data.supply,
       age: Date.now() - data.timestamp
     }))
   };
