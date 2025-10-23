@@ -278,6 +278,20 @@ if (typeof window !== 'undefined') {
 // Client-side in-flight request coalescing for multi fetches
 const inflightMultiRequests = new Map<string, Promise<any>>();
 
+// Crypto token addresses for proper market cap calculation
+const CRYPTO_ADDRESSES = new Set([
+  'So11111111111111111111111111111111111111112', // SOL
+  '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs', // ETH (Wormhole)
+  '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh'  // BTC (Wormhole)
+]);
+
+/**
+ * Check if a token address is a crypto asset
+ */
+function isCryptoToken(tokenAddress: string): boolean {
+  return CRYPTO_ADDRESSES.has(tokenAddress);
+}
+
 // Smart cache invalidation based on popularity and timestamp
 function shouldInvalidateCache(tokenAddress: string): boolean {
   const now = Date.now();
@@ -422,9 +436,15 @@ export async function fetchTokenData(tokenAddress: string) {
         // Fetch actual token supply for accurate market cap
         const supply = await fetchTokenSupply(tokenAddress);
 
+        // Use different market cap formula for crypto vs xStocks
+        const isCrypto = isCryptoToken(tokenAddress);
+        const marketCapValue = isCrypto
+          ? Math.round(price * supply) // Crypto: standard formula
+          : Math.round(price * supply / 1000); // xStocks: adjusted for tokenomics
+
         const tokenData = {
           price: Number(price.toFixed(8)),
-          marketCap: Math.round(price * supply / 1000), // Adjusted: price × supply / 1000 for xStocks
+          marketCap: marketCapValue,
           volume24h: Math.round(price * 10000), // Adjusted: 10K daily volume for xStocks
           change24h: change24h ? Number(change24h.toFixed(2)) : Number(((Math.random() - 0.5) * 10).toFixed(2))
         };
@@ -550,9 +570,15 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
             // Fetch actual token supply for accurate market cap
             const supply = await fetchTokenSupply(address);
 
+            // Use different market cap formula for crypto vs xStocks
+            const isCrypto = isCryptoToken(address);
+            const marketCapValue = isCrypto
+              ? Math.round(price * supply) // Crypto: standard formula
+              : Math.round(price * supply / 1000); // xStocks: adjusted for tokenomics
+
             const tokenData = {
               price: Number(price.toFixed(8)),
-              marketCap: Math.round(price * supply / 1000), // Adjusted: price × supply / 1000 for xStocks
+              marketCap: marketCapValue,
               volume24h: Math.round(price * 10000), // Adjusted: 10K daily volume for xStocks
               change24h: typeof change24h === 'number' ? Number(change24h.toFixed(2)) : 0
             };
@@ -698,9 +724,15 @@ export async function fetchMultipleTokensDataProgressive(
                   // Fetch actual token supply for accurate market cap
                   const supply = await fetchTokenSupply(address);
 
+                  // Use different market cap formula for crypto vs xStocks
+                  const isCrypto = isCryptoToken(address);
+                  const marketCapValue = isCrypto
+                    ? Math.round(price * supply) // Crypto: standard formula
+                    : Math.round(price * supply / 1000); // xStocks: adjusted for tokenomics
+
                   const tokenData = {
                     price: Number(price.toFixed(8)),
-                    marketCap: Math.round(price * supply / 1000), // Adjusted: price × supply / 1000 for xStocks
+                    marketCap: marketCapValue,
                     volume24h: Math.round(price * 10000), // Adjusted: 10K daily volume for xStocks
                     change24h: change24h ? Number(change24h.toFixed(2)) : Number(((Math.random() - 0.5) * 10).toFixed(2))
                   };
