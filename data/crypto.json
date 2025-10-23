@@ -1,0 +1,28 @@
+{
+  "crypto": [
+    {
+      "symbol": "SOL",
+      "name": "Solana",
+      "solanaAddress": "So11111111111111111111111111111111111111112",
+      "solscanUrl": "https://solscan.io/token/So11111111111111111111111111111111111111112",
+      "logoUrl": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "ETH",
+      "name": "Ethereum",
+      "solanaAddress": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+      "solscanUrl": "https://solscan.io/token/7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+      "logoUrl": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs/logo.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "solanaAddress": "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
+      "solscanUrl": "https://solscan.io/token/3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
+      "logoUrl": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh/logo.png",
+      "isAvailable": true
+    }
+  ]
+}

@@ -11,17 +11,20 @@ interface StockPurchaseFormProps {
   stockSymbol: string;
   stockName: string;
   stockPrice: string;
+  assetType?: 'stock' | 'crypto';
   onSuccess?: () => void;
   onAmountChange?: (amount: string) => void;
 }
 
-export default function StockPurchaseForm({ 
-  stockSymbol, 
-  stockName, 
-  stockPrice, 
+export default function StockPurchaseForm({
+  stockSymbol,
+  stockName,
+  stockPrice,
+  assetType = 'stock',
   onSuccess,
-  onAmountChange 
+  onAmountChange
 }: StockPurchaseFormProps) {
+  const isCrypto = assetType === 'crypto';
   const { user, login } = usePrivy();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -527,7 +530,9 @@ export default function StockPurchaseForm({
                 <CheckCircle className="h-4 w-4 text-white" />
               </div>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Stock Purchase Order</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {isCrypto ? 'Crypto Purchase Order' : 'Stock Purchase Order'}
+            </h1>
             <p className="text-gray-300 text-sm">{receiptData.stockSymbol} • {receiptData.stockName}</p>
           </div>
 
@@ -664,7 +669,7 @@ export default function StockPurchaseForm({
             <div className="text-orange-400 font-semibold">Authentication Required</div>
           </div>
           <p className="text-gray-300 mb-6">
-            Please login to complete your purchase of {stockName} shares.
+            Please login to complete your purchase of {stockName} {isCrypto ? '' : 'shares'}.
           </p>
           <div className="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
             <p className="text-sm text-orange-300">
@@ -835,7 +840,7 @@ export default function StockPurchaseForm({
                 required
               />
               <span className="text-sm text-gray-300">
-                I understand the value of stocks can go up or down. *
+                I understand the value of {isCrypto ? 'crypto' : 'stocks'} can go up or down. *
               </span>
             </label>
 
@@ -861,7 +866,7 @@ export default function StockPurchaseForm({
                 required
               />
               <span className="text-sm text-gray-300">
-                I understand this transaction is processed manually, may take a few hours, and the final stock price can vary slightly from the estimate. *
+                I understand this transaction is processed manually, may take a few hours, and the final {isCrypto ? 'crypto' : 'stock'} price can vary slightly from the estimate. *
               </span>
             </label>
           </div>

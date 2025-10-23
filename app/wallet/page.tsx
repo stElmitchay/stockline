@@ -11,6 +11,7 @@ import { Badge } from "../../components/ui/badge";
 import { fetchTokenData, fetchMultipleTokensData, warmUpCache } from "@/utils/solanaData";
 import { getCachedWalletData } from "@/utils/walletPrefetch";
 import stocksData from '@/data/stocks.json';
+import cryptoData from '@/data/crypto.json';
 import Navigation from "@/components/navigation";
 import { CashoutModal } from "@/components/modals/cashoutModal";
 import { HoldingsChart } from "@/components/holdingsChart";
@@ -299,26 +300,18 @@ export default function WalletPage() {
 			setError(null);
 
 			const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
-			console.log('Debug: Using RPC URL:', rpcUrl);  // Log the RPC URL for verification
 
-			const connection = new Connection(rpcUrl as string, { commitment: 'processed' });
-			const publicKey = new PublicKey(solanaWallet!.address);
-			console.log('Debug: Wallet Address:', publicKey.toString());
-
-			// Test RPC connection with version
-			console.log('Debug: Testing RPC connection...');
-			try {
-				const version = await connection.getVersion();
-				console.log('Debug: RPC connection successful, version:', version);
-			} catch (rpcError) {
-				console.error('Debug: RPC connection failed:', rpcError);
-				throw new Error(`RPC connection failed: ${rpcError}`);
+			if (!rpcUrl) {
+				throw new Error('RPC URL not configured. Please set NEXT_PUBLIC_SOLANA_RPC_URL in your environment variables.');
 			}
+
+			console.log('Connecting to Solana RPC...');
+			const connection = new Connection(rpcUrl, { commitment: 'confirmed' });
+			const publicKey = new PublicKey(solanaWallet!.address);
 
 			// Fetch SOL balance
 			const solBalance = await connection.getBalance(publicKey);
 			setBalance(solBalance / LAMPORTS_PER_SOL);
-			console.log('Debug: SOL Balance:', solBalance / LAMPORTS_PER_SOL);
 
 			// Fetch token accounts with on-chain balance verification
 			console.log('Debug: About to fetch token accounts...');
@@ -424,10 +417,26 @@ export default function WalletPage() {
 
 			// Now create tokenData from processedTokens in parallel
 			const stockMap = new Map(stocksData.xStocks.map(stock => [stock.solanaAddress, stock]));
+			const cryptoMap = new Map(cryptoData.crypto.map(crypto => [crypto.solanaAddress, crypto]));
 			const filtered = processedTokens.filter(info => info.tokenAmount.uiAmount > 0);
 			const tokenData: TokenAccount[] = await Promise.all(
 				filtered.map(async (info) => {
 					const balance = info.tokenAmount.uiAmount;
+
+					// Check if it's a crypto asset first
+					const cryptoInfo = cryptoMap.get(info.mint);
+					if (cryptoInfo) {
+						return {
+							mint: info.mint,
+							balance,
+							decimals: info.tokenAmount.decimals,
+							symbol: cryptoInfo.symbol,
+							name: cryptoInfo.name,
+							logoURI: cryptoInfo.logoUrl
+						};
+					}
+
+					// Then check if it's a stock
 					const stockInfo = stockMap.get(info.mint);
 					if (stockInfo) {
 						return {
@@ -439,6 +448,8 @@ export default function WalletPage() {
 							logoURI: stockInfo.logoUrl
 						};
 					}
+
+					// Fallback to fetching metadata
 					const metadata = await fetchTokenMetadata(info.mint, connection);
 					return {
 						mint: info.mint,
@@ -764,10 +775,117 @@ export default function WalletPage() {
 						</div>
 					) : (
 						<div className="space-y-4">
-							{/* SPL Token Holdings Only */}
+							{/* SPL Token Holdings - Grouped by type */}
 							{tokens.length > 0 ? (
-								tokens.map((token, index) => (
-								<div key={index} className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
+								<>
+									{/* Crypto Assets Section */}
+									{(() => {
+										const cryptoTokens = tokens.filter(token =>
+											cryptoData.crypto.some(crypto => crypto.solanaAddress === token.mint)
+										);
+
+										if (cryptoTokens.length === 0) return null;
+
+										return (
+											<div className="space-y-4">
+												<h2 className="text-xl font-semibold text-white flex items-center gap-2">
+													<span>Crypto Assets</span>
+													<span className="text-sm text-gray-400 font-normal">({cryptoTokens.length})</span>
+												</h2>
+												{cryptoTokens.map((token, index) => (
+													<div key={index} className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
+														style={{
+															background: '#2A2A2A',
+															border: '1px solid rgba(255, 255, 255, 0.1)',
+															boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+														}}>
+														<div className="flex items-center justify-between">
+															<div className="flex items-center gap-3">
+																{token.logoURI ? (
+																	<img
+																		src={token.logoURI}
+																		alt={token.symbol || 'Token'}
+																		className="w-10 h-10 rounded-full"
+																		onError={(e) => {
+																			const target = e.target as HTMLImageElement;
+																			target.style.display = 'none';
+																			const fallback = target.nextElementSibling as HTMLElement;
+																			if (fallback) fallback.style.display = 'flex';
+																		}}
+																	/>
+																) : null}
+																<div
+																	className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center"
+																	style={{ display: token.logoURI ? 'none' : 'flex' }}
+																>
+																	<span className="text-white font-bold text-xs">
+																		{token.symbol?.slice(0, 3) || "TKN"}
+																	</span>
+																</div>
+																<div>
+																	<p className="font-medium text-white">
+																		{token.name || token.symbol || "Unknown Token"}
+																	</p>
+																	<p className="text-sm text-gray-400">
+																		{token.symbol || formatAddress(token.mint)}
+																	</p>
+																</div>
+															</div>
+															<div className="text-right">
+																<p className="font-medium text-white">
+																	{(() => {
+																		if (token.balance >= 1) {
+																			return token.balance.toFixed(2);
+																		} else if (token.balance >= 0.01) {
+																			return token.balance.toFixed(4);
+																		} else if (token.balance > 0) {
+																			return token.balance.toFixed(6);
+																		} else {
+																			return '0';
+																		}
+																	})()} {token.symbol || 'TOKENS'}
+																</p>
+																<p className="text-sm text-gray-400">
+																	{token.price && token.price > 0
+																		? (() => {
+																			const value = token.balance * token.price;
+																			if (value >= 1) {
+																				return `$${value.toFixed(2)}`;
+																			} else if (value >= 0.01) {
+																				return `$${value.toFixed(4)}`;
+																			} else if (value > 0) {
+																				return `$${value.toFixed(6)}`;
+																			} else {
+																				return '$0.00';
+																			}
+																		})()
+																		: 'Price unavailable'
+																	}
+																</p>
+															</div>
+														</div>
+													</div>
+												))}
+											</div>
+										);
+									})()}
+
+									{/* Stock Assets Section */}
+									{(() => {
+										const stockTokens = tokens.filter(token =>
+											stocksData.xStocks.some(stock => stock.solanaAddress === token.mint)
+										);
+
+										if (stockTokens.length === 0) return null;
+
+										return (
+											<div className="space-y-4 mt-8">
+												<h2 className="text-xl font-semibold text-white flex items-center gap-2">
+													<span>Stock Assets</span>
+													<span className="text-sm text-gray-400 font-normal">({stockTokens.length})</span>
+												</h2>
+												{stockTokens.map((token, index) => (
+													<div key={index} className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
 									style={{
 										background: '#2A2A2A',
 										border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -840,7 +958,11 @@ export default function WalletPage() {
 										</div>
 									</div>
 								</div>
-							))
+												))}
+											</div>
+										);
+									})()}
+								</>
 							) : (
 								<div className="relative overflow-hidden rounded-2xl p-6 text-center"
 									style={{

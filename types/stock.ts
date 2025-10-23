@@ -9,6 +9,8 @@ export interface Stock {
   logoUrl?: string;
   solscanUrl?: string;
   isAvailable?: boolean;
+  assetType?: 'stock' | 'crypto';
+  chain?: 'solana' | 'ethereum' | 'bitcoin';
 }
 
 export interface StockData {

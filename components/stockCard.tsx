@@ -24,6 +24,7 @@ export function StockCard({ stock }: StockCardProps) {
   const isLoaded = (stock.price ?? 0) > 0;
   const isPositive = (stock.change24h ?? 0) >= 0;
   const isAvailable = stock.isAvailable ?? false;
+  const isCrypto = stock.assetType === 'crypto';
 
   // Handle notify me functionality
   const handleNotifyMe = async () => {
@@ -129,7 +130,7 @@ export function StockCard({ stock }: StockCardProps) {
       border: '1px solid rgba(255, 255, 255, 0.1)',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
     }}>
-      
+
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
@@ -281,9 +282,9 @@ export function StockCard({ stock }: StockCardProps) {
         <div className="space-y-2">
           {isAvailable ? (
             <>
-              <Link href={`/purchase?symbol=${stock.symbol}&name=${encodeURIComponent(stock.name)}&price=${stock.price}`} className="block">
-                <Button 
-                  size="sm" 
+              <Link href={`/purchase?symbol=${stock.symbol}&name=${encodeURIComponent(stock.name)}&price=${stock.price}&assetType=${isCrypto ? 'crypto' : 'stock'}`} className="block">
+                <Button
+                  size="sm"
                   className="w-full font-semibold"
                   style={{
                     background: isLoaded ? '#D9FF66' : '#4A5568',
@@ -293,12 +294,12 @@ export function StockCard({ stock }: StockCardProps) {
                   disabled={!isLoaded}
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  {isLoaded ? 'Order Now' : 'Loading...'}
+                  {isLoaded ? (isCrypto ? 'Buy Now' : 'Order Now') : 'Loading...'}
                 </Button>
               </Link>
-              <Link href={`/stocks/${encodeURIComponent(stock.symbol)}`} className="block">
-                <Button 
-                  size="sm" 
+              <Link href={isCrypto ? `/crypto/${encodeURIComponent(stock.symbol)}` : `/stocks/${encodeURIComponent(stock.symbol)}`} className="block">
+                <Button
+                  size="sm"
                   variant="outline"
                   className="w-full border-gray-600 text-gray-300"
                 >

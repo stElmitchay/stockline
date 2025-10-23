@@ -17,10 +17,12 @@ function PurchaseForm() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [userAmount, setUserAmount] = useState('');
 
-  // Stock information from URL params
+  // Asset information from URL params
   const stockSymbol = searchParams.get('symbol') || '';
   const stockName = searchParams.get('name') || '';
   const stockPrice = searchParams.get('price') || '';
+  const assetType = (searchParams.get('assetType') as 'stock' | 'crypto') || 'stock';
+  const isCrypto = assetType === 'crypto';
   
   // Exchange rate and calculations
   const USD_TO_SLL_RATE = 24.5;
@@ -77,7 +79,9 @@ function PurchaseForm() {
                 <ArrowLeft className="h-5 w-5 text-white" />
               </Link>
               <div className="flex-1">
-                <h1 className="text-3xl font-bold text-gray-100 mb-2">Purchase Stock</h1>
+                <h1 className="text-3xl font-bold text-gray-100 mb-2">
+                  {isCrypto ? 'Buy Crypto' : 'Purchase Stock'}
+                </h1>
                 <p className="text-gray-400">Please fill out the form below to complete your purchase.</p>
               </div>
             </div>
@@ -99,12 +103,13 @@ function PurchaseForm() {
           </div>
         </div>
 
-        {/* Stock Purchase Form */}
+        {/* Purchase Form */}
         <div className="max-w-4xl mx-auto mb-6">
           <StockPurchaseForm
             stockSymbol={stockSymbol || ''}
             stockName={stockName || ''}
             stockPrice={stockPrice || ''}
+            assetType={assetType}
             onSuccess={handleFormSuccess}
             onAmountChange={setUserAmount}
           />

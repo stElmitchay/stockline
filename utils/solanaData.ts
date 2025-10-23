@@ -600,8 +600,9 @@ export async function fetchMultipleTokensData(tokenAddresses: string[]) {
  * Updates the UI as each batch becomes available
  */
 export async function fetchMultipleTokensDataProgressive(
-  tokenAddresses: string[], 
-  onProgress: (updatedStocks: any[]) => void
+  tokenAddresses: string[],
+  onProgress: (updatedAssets: any[]) => void,
+  dataSource: 'stocks' | 'crypto' = 'stocks'
 ) {
   try {
     // Filter out valid addresses
@@ -643,8 +644,8 @@ export async function fetchMultipleTokensDataProgressive(
     // If we have cached data, update UI immediately
     if (dataMap.size > 0) {
       console.log(`⚡ Updating UI immediately with ${dataMap.size} cached tokens`);
-      const updatedStocks = updateStocksWithLiveData(dataMap);
-      onProgress(updatedStocks);
+      const updatedAssets = updateAssetsWithLiveData(dataMap, dataSource);
+      onProgress(updatedAssets);
     }
     
     // Fetch uncached tokens with progressive loading
@@ -740,8 +741,8 @@ export async function fetchMultipleTokensDataProgressive(
             
             // Update UI with the new batch data
             console.log(`🔄 Updating UI with batch ${batchIndex + 1} data (${successfulTokens}/${batch.length} successful)`);
-            const updatedStocks = updateStocksWithLiveData(dataMap);
-            onProgress(updatedStocks);
+            const updatedAssets = updateAssetsWithLiveData(dataMap, dataSource);
+            onProgress(updatedAssets);
             
             // Add delay between batches to respect rate limits
             if (i + batchSize < tokensToFetch.length) {
@@ -774,10 +775,10 @@ export async function fetchMultipleTokensDataProgressive(
                   });
                 }
               }
-              
+
               // Update UI with fallback data
-              const updatedStocks = updateStocksWithLiveData(dataMap);
-              onProgress(updatedStocks);
+              const updatedAssets = updateAssetsWithLiveData(dataMap, dataSource);
+              onProgress(updatedAssets);
             }
           }
         }
@@ -793,51 +794,64 @@ export async function fetchMultipleTokensDataProgressive(
 }
 
 /**
- * Helper function to update stocks with live data
+ * Helper function to update assets (stocks or crypto) with live data
  */
-function updateStocksWithLiveData(tokenDataMap: Map<string, any>) {
-  // Import stocks data here to avoid circular dependencies
-  const stocksData = require('@/data/stocks.json');
-  const xStocksData = stocksData.xStocks.map((stock: any) => ({
-    ...stock,
-    price: 0,
-    marketCap: 0,
-    volume24h: 0,
-    change24h: 0
-  }));
-  
-  return xStocksData.map((stock: any) => {
-    const liveData = tokenDataMap.get(stock.solanaAddress);
-    
+function updateAssetsWithLiveData(tokenDataMap: Map<string, any>, dataSource: 'stocks' | 'crypto') {
+  // Import data based on source to avoid circular dependencies
+  let assetsData: any[];
+
+  if (dataSource === 'stocks') {
+    const stocksData = require('@/data/stocks.json');
+    assetsData = stocksData.xStocks.map((stock: any) => ({
+      ...stock,
+      price: 0,
+      marketCap: 0,
+      volume24h: 0,
+      change24h: 0
+    }));
+  } else {
+    const cryptoData = require('@/data/crypto.json');
+    assetsData = cryptoData.crypto.map((crypto: any) => ({
+      ...crypto,
+      price: 0,
+      marketCap: 0,
+      volume24h: 0,
+      change24h: 0
+    }));
+  }
+
+  return assetsData.map((asset: any) => {
+    const liveData = tokenDataMap.get(asset.solanaAddress);
+
     if (liveData) {
       // Validate the data before using it
       const validPrice = typeof liveData.price === 'number' && !isNaN(liveData.price) && liveData.price > 0
         ? liveData.price
-        : stock.price; // Fall back to static data if invalid
-        
+        : asset.price; // Fall back to static data if invalid
+
       const validMarketCap = typeof liveData.marketCap === 'number' && !isNaN(liveData.marketCap) && liveData.marketCap > 0
         ? liveData.marketCap
-        : stock.marketCap;
-        
+        : asset.marketCap;
+
       const validVolume = typeof liveData.volume24h === 'number' && !isNaN(liveData.volume24h) && liveData.volume24h > 0
         ? liveData.volume24h
-        : stock.volume24h;
-        
+        : asset.volume24h;
+
       // change24h can be negative, so just check if it's a number
       const validChange = typeof liveData.change24h === 'number' && !isNaN(liveData.change24h)
         ? liveData.change24h
-        : stock.change24h ?? 0;
-      
+        : asset.change24h ?? 0;
+
       return {
-        ...stock,
+        ...asset,
         price: validPrice,
         marketCap: validMarketCap,
         volume24h: validVolume,
         change24h: validChange
       };
     }
-    
-    return stock;
+
+    return asset;
   });
 }
 
@@ -861,6 +875,7 @@ export function clearPriceCache(): void {
     // Clear session-based cache tracking
     sessionStorage.removeItem('cache_warmed_session');
     sessionStorage.removeItem('stocks_initialized');
+    sessionStorage.removeItem('crypto_initialized');
   }
 
   console.log('Price cache, supply cache, failed fetch cache, and session data cleared');
@@ -873,6 +888,7 @@ export function resetSessionCache(): void {
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('cache_warmed_session');
     sessionStorage.removeItem('stocks_initialized');
+    sessionStorage.removeItem('crypto_initialized');
     console.log('Session cache tracking reset');
   }
 }
