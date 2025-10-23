@@ -219,7 +219,7 @@ export default function StocksMarketplace() {
          <div className="container mx-auto px-4">
            <div className="max-w-3xl mx-auto">
              <p className="text-gray-500 text-xs leading-relaxed opacity-60 text-center">
-               Disclaimer: Stockline provides a platform to access tokenized U.S. equities. We are not a registered investment advisor or broker-dealer. All investment decisions are made at your own risk. Investing in securities involves risks, including the possible loss of the principal amount invested. The value of stocks can fluctuate, and past performance does not guarantee future returns. Stockline does not provide investment, tax, or legal advice.
+               Disclaimer: Stockline provides a platform to access tokenized U.S. equities and digital assets. We are not a registered investment advisor or broker-dealer. All investment decisions are made at your own risk. Investing in securities involves risks, including the possible loss of the principal amount invested. The value of stocks can fluctuate, and past performance does not guarantee future returns. Stockline does not provide investment, tax, or legal advice.
              </p>
            </div>
          </div>
