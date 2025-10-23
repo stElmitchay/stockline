@@ -4,15 +4,35 @@
 
 /**
  * Format price as currency
+ * Handles very small crypto prices properly (e.g., $0.00002)
  */
 export const formatPrice = (price?: number): string => {
-  if (price === undefined || price === null) {
+  if (price === undefined || price === null || price === 0) {
     return '$0.00';
   }
+
+  // For very small prices (< $0.01), show up to 8 decimal places
+  if (price < 0.01) {
+    // Remove trailing zeros for cleaner display
+    return '$' + price.toFixed(8).replace(/\.?0+$/, '');
+  }
+
+  // For prices between $0.01 and $1, show 4 decimal places
+  if (price < 1) {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4
+    }).format(price);
+  }
+
+  // For prices >= $1, show 2 decimal places (standard)
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 2
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(price);
 };
 

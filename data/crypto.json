@@ -23,6 +23,54 @@
       "solscanUrl": "https://solscan.io/token/3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
       "logoUrl": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh/logo.png",
       "isAvailable": true
+    },
+    {
+      "symbol": "BNB",
+      "name": "BNB",
+      "solanaAddress": "9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa",
+      "solscanUrl": "https://solscan.io/token/9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa",
+      "logoUrl": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa/logo.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "TRX",
+      "name": "TRON",
+      "solanaAddress": "GbbesPbaYh5uiAZSYNXTc7w9jty1rpg3P9L4JeN4LkKc",
+      "solscanUrl": "https://solscan.io/token/GbbesPbaYh5uiAZSYNXTc7w9jty1rpg3P9L4JeN4LkKc",
+      "logoUrl": "https://s2.coinmarketcap.com/static/img/coins/64x64/1958.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "JUP",
+      "name": "Jupiter",
+      "solanaAddress": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "solscanUrl": "https://solscan.io/token/JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "logoUrl": "https://s2.coinmarketcap.com/static/img/coins/64x64/29210.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "BONK",
+      "name": "Bonk",
+      "solanaAddress": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "solscanUrl": "https://solscan.io/token/DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "logoUrl": "https://s2.coinmarketcap.com/static/img/coins/64x64/23095.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "JTO",
+      "name": "Jito",
+      "solanaAddress": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+      "solscanUrl": "https://solscan.io/token/jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+      "logoUrl": "https://s2.coinmarketcap.com/static/img/coins/64x64/28541.png",
+      "isAvailable": true
+    },
+    {
+      "symbol": "ORE",
+      "name": "Ore",
+      "solanaAddress": "oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp",
+      "solscanUrl": "https://solscan.io/token/oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp",
+      "logoUrl": "https://s2.coinmarketcap.com/static/img/coins/64x64/32782.png",
+      "isAvailable": true
     }
   ]
 }

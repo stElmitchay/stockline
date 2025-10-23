@@ -53,6 +53,118 @@ const DETAILS: Record<string, { title: string; category: string; objective: stri
       "Wormhole bridging brings Bitcoin liquidity to Solana's fast ecosystem.",
     ],
   },
+  BNB: {
+    title: "BNB (Wormhole)",
+    category: "Exchange Token",
+    objective: [
+      "BNB is the native cryptocurrency of the BNB Chain ecosystem, originally launched by Binance.",
+      "This is Wormhole-wrapped BNB on Solana, enabling BNB utility across the Solana ecosystem.",
+      "BNB is used for trading fee discounts, transaction fees, and powering decentralized applications on BNB Chain.",
+    ],
+    benefits: [
+      "BNB has one of the largest trading volumes and market caps among exchange tokens.",
+      "Regular token burns reduce supply, creating deflationary pressure.",
+      "Powers a vast ecosystem of DeFi, GameFi, and NFT projects on BNB Chain.",
+      "Wormhole bridging brings BNB liquidity to Solana's high-speed environment.",
+      "Utility extends beyond trading fees to staking, governance, and launchpad participation.",
+    ],
+  },
+  DOGE: {
+    title: "Dogecoin (Wrapped)",
+    category: "Meme Coin",
+    objective: [
+      "Dogecoin (DOGE) started as a lighthearted cryptocurrency based on the Shiba Inu meme.",
+      "This is wrapped DOGE on Solana, bringing the community-driven meme coin to the Solana ecosystem.",
+      "DOGE has evolved into a widely-accepted payment method and store of value with strong community support.",
+    ],
+    benefits: [
+      "One of the most recognized cryptocurrencies with mainstream adoption.",
+      "Low transaction fees make it ideal for microtransactions and tipping.",
+      "Strong community support and high social media engagement.",
+      "Accepted by major merchants and payment processors worldwide.",
+      "Wrapping on Solana enables faster and cheaper DOGE transactions.",
+    ],
+  },
+  TRX: {
+    title: "TRON",
+    category: "Blockchain Platform",
+    objective: [
+      "TRON (TRX) is a blockchain platform focused on content sharing and entertainment applications.",
+      "TRX is now available on Solana, expanding its reach to the high-performance Solana ecosystem.",
+      "TRON aims to create a decentralized internet where content creators can connect directly with consumers.",
+    ],
+    benefits: [
+      "High throughput and scalability for content-heavy applications.",
+      "Low transaction costs make it ideal for micropayments and content monetization.",
+      "Large ecosystem with billions of dollars in stablecoin transactions.",
+      "Strong presence in Asian markets with widespread adoption.",
+      "Integration with Solana enables cross-chain DeFi opportunities.",
+    ],
+  },
+  JUP: {
+    title: "Jupiter",
+    category: "DeFi Aggregator",
+    objective: [
+      "Jupiter (JUP) is the native token of Jupiter, the leading DEX aggregator on Solana.",
+      "JUP powers governance and incentivizes liquidity provision across Solana's DeFi ecosystem.",
+      "Jupiter aggregates liquidity from multiple DEXs to provide users with the best swap rates.",
+    ],
+    benefits: [
+      "Jupiter is the #1 DEX aggregator on Solana by volume.",
+      "Smart routing technology finds the best prices across multiple liquidity sources.",
+      "JUP holders participate in protocol governance and revenue sharing.",
+      "Integrated with all major Solana wallets and dApps.",
+      "Continuous innovation with features like limit orders, DCA, and perpetuals.",
+    ],
+  },
+  BONK: {
+    title: "Bonk",
+    category: "Community Meme Coin",
+    objective: [
+      "Bonk is Solana's first dog-themed meme coin, launched as a community-driven token.",
+      "50% of BONK's supply was airdropped to the Solana community to revitalize the ecosystem.",
+      "BONK serves as a community coin for the Solana ecosystem with growing utility.",
+    ],
+    benefits: [
+      "First major Solana meme coin with strong community backing.",
+      "Wide distribution through airdrops to NFT holders and early Solana users.",
+      "Growing utility with integration into Solana DeFi protocols and games.",
+      "Low entry point with massive upside potential driven by community momentum.",
+      "Represents the fun and experimental side of the Solana ecosystem.",
+    ],
+  },
+  JTO: {
+    title: "Jito",
+    category: "Liquid Staking & MEV",
+    objective: [
+      "Jito (JTO) is the governance token for Jito Network, Solana's leading liquid staking protocol.",
+      "Jito provides liquid staking derivatives (JitoSOL) and MEV infrastructure for Solana.",
+      "JTO holders govern the protocol and receive rewards from staking and MEV activities.",
+    ],
+    benefits: [
+      "Jito is the largest liquid staking protocol on Solana by TVL.",
+      "JitoSOL allows users to stake SOL while maintaining liquidity for DeFi.",
+      "MEV infrastructure optimizes validator rewards and reduces spam.",
+      "JTO governance controls protocol parameters and treasury allocation.",
+      "Backed by top-tier investors including a16z and Multicoin Capital.",
+    ],
+  },
+  ORE: {
+    title: "Ore",
+    category: "Mineable Token",
+    objective: [
+      "Ore is a mineable token on Solana using a novel proof-of-work algorithm.",
+      "Unlike traditional PoW, Ore mining is accessible and efficient on consumer hardware.",
+      "ORE brings the fairness of mining to the Solana ecosystem without environmental concerns.",
+    ],
+    benefits: [
+      "First mineable token on Solana with fair distribution through mining.",
+      "Energy-efficient mining algorithm suitable for regular computers.",
+      "No pre-mine or venture capital allocation - purely community-driven.",
+      "Decentralized distribution model rewards active participants.",
+      "Novel economic model combining PoW mining with Solana's speed.",
+    ],
+  },
 };
 
 export default async function CryptoDetailsPage({ params }: { params: Promise<{ symbol: string }> }) {

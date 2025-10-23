@@ -282,7 +282,13 @@ const inflightMultiRequests = new Map<string, Promise<any>>();
 const CRYPTO_ADDRESSES = new Set([
   'So11111111111111111111111111111111111111112', // SOL
   '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs', // ETH (Wormhole)
-  '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh'  // BTC (Wormhole)
+  '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh', // BTC (Wormhole)
+  '9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa', // BNB (Wormhole)
+  'GbbesPbaYh5uiAZSYNXTc7w9jty1rpg3P9L4JeN4LkKc', // TRX (TRON)
+  'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN', // JUP (Jupiter)
+  'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', // BONK
+  'jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL', // JTO (Jito)
+  'oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp'  // ORE
 ]);
 
 /**
