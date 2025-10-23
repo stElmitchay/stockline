@@ -14,7 +14,7 @@ import { useCrypto } from "@/hooks/useCrypto";
 import Navigation from "@/components/navigation";
 
 export default function StocksMarketplace() {
-  const [assetType, setAssetType] = useState<'stocks' | 'crypto'>('stocks');
+  const [assetType, setAssetType] = useState<'stock' | 'crypto'>('stock');
   const { stocks, filteredStocks, isLoading, searchQuery, sortBy, stats, setSearchQuery, setSortBy, refreshData } = useStocks();
   const { crypto, filteredCrypto, isLoading: isCryptoLoading, searchQuery: cryptoSearchQuery, sortBy: cryptoSortBy, stats: cryptoStats, setSearchQuery: setCryptoSearchQuery, setSortBy: setCryptoSortBy, refreshData: refreshCryptoData } = useCrypto();
   const [showFilters, setShowFilters] = useState(false);
@@ -22,14 +22,14 @@ export default function StocksMarketplace() {
   const [showDisclosureModal, setShowDisclosureModal] = useState(false);
 
   // Conditional data based on asset type
-  const currentAssets = assetType === 'stocks' ? filteredStocks : filteredCrypto;
-  const currentIsLoading = assetType === 'stocks' ? isLoading : isCryptoLoading;
-  const currentSearchQuery = assetType === 'stocks' ? searchQuery : cryptoSearchQuery;
-  const currentSortBy = assetType === 'stocks' ? sortBy : cryptoSortBy;
-  const currentStats = assetType === 'stocks' ? stats : cryptoStats;
-  const currentSetSearchQuery = assetType === 'stocks' ? setSearchQuery : setCryptoSearchQuery;
-  const currentSetSortBy = assetType === 'stocks' ? setSortBy : setCryptoSortBy;
-  const currentRefreshData = assetType === 'stocks' ? refreshData : refreshCryptoData;
+  const currentAssets = assetType === 'stock' ? filteredStocks : filteredCrypto;
+  const currentIsLoading = assetType === 'stock' ? isLoading : isCryptoLoading;
+  const currentSearchQuery = assetType === 'stock' ? searchQuery : cryptoSearchQuery;
+  const currentSortBy = assetType === 'stock' ? sortBy : cryptoSortBy;
+  const currentStats = assetType === 'stock' ? stats : cryptoStats;
+  const currentSetSearchQuery = assetType === 'stock' ? setSearchQuery : setCryptoSearchQuery;
+  const currentSetSortBy = assetType === 'stock' ? setSortBy : setCryptoSortBy;
+  const currentRefreshData = assetType === 'stock' ? refreshData : refreshCryptoData;
 
   // Check if user has agreed to disclosures
   useEffect(() => {
@@ -66,9 +66,9 @@ export default function StocksMarketplace() {
                 border: '1px solid rgba(255, 255, 255, 0.15)'
               }}>
                 <button
-                  onClick={() => setAssetType('stocks')}
+                  onClick={() => setAssetType('stock')}
                   className={`px-8 py-2.5 rounded-full font-medium transition-all duration-300 ${
-                    assetType === 'stocks'
+                    assetType === 'stock'
                       ? 'bg-[#D9FF66] text-black shadow-md'
                       : 'text-gray-300 hover:text-white'
                   }`}
@@ -93,7 +93,7 @@ export default function StocksMarketplace() {
               {/* Main Text Content */}
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-gray-100 mb-2">
-                  {assetType === 'stocks'
+                  {assetType === 'stock'
                     ? 'Own a piece of a company you use everyday'
                     : 'Invest in digital assets'}
                 </h1>
@@ -138,7 +138,7 @@ export default function StocksMarketplace() {
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder={assetType === 'stocks' ? "Search stocks..." : "Search crypto..."}
+                    placeholder={assetType === 'stock' ? "Search stocks..." : "Search crypto..."}
                     value={currentSearchQuery}
                     onChange={(e) => currentSetSearchQuery(e.target.value)}
                     className="pl-10 pr-10 py-3 text-sm bg-gray-800/90 border-gray-700/50 rounded-xl backdrop-blur-sm focus:bg-gray-800 transition-all duration-200"
@@ -205,7 +205,7 @@ export default function StocksMarketplace() {
         {assetsToShow.length === 0 && !showLoadingSkeletons && (
           <div className="text-center py-12">
             <div className="text-gray-400 text-lg">
-              {assetType === 'stocks' ? 'No stocks found' : 'No crypto assets found'}
+              {assetType === 'stock' ? 'No stocks found' : 'No crypto assets found'}
             </div>
             <div className="text-gray-500 text-sm mt-2">
               Try adjusting your search or filters
