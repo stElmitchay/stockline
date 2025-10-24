@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
-import stocksData from "@/data/stocks.json";
 import { PriceChart } from "@/components/priceChart";
+import { useStocks } from "@/hooks/useStocks";
+import { Loader2 } from "lucide-react";
+import { use } from "react";
 
 // Inline prop typing to avoid PageProps constraint issues
 
@@ -127,10 +131,26 @@ const DETAILS: Record<string, { title: string; category: string; objective: stri
   },
 };
 
-export default async function StockDetailsPage({ params }: { params: Promise<{ symbol: string }> }) {
-  const { symbol } = await params;
+export default function StockDetailsPage({ params }: { params: Promise<{ symbol: string }> }) {
+  const { symbol } = use(params);
   const symbolParam = decodeURIComponent(symbol || "");
-  const stock = stocksData.xStocks.find((s) => s.symbol.toLowerCase() === symbolParam.toLowerCase());
+  const { stocks, isLoading } = useStocks();
+
+  const stock = stocks.find((s) => s.symbol.toLowerCase() === symbolParam.toLowerCase());
+
+  if (isLoading && !stock) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: '#2E4744' }}>
+        <div className="max-w-4xl mx-auto px-4 py-10">
+          <Link href="/stocks" className="text-gray-300 hover:text-white">← Back to Stocks</Link>
+          <div className="flex items-center gap-2 mt-6">
+            <Loader2 className="h-6 w-6 animate-spin text-white" />
+            <h1 className="text-2xl font-bold text-white">Loading stock data...</h1>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!stock) {
     return (
@@ -144,7 +164,7 @@ export default async function StockDetailsPage({ params }: { params: Promise<{ s
   }
 
   const details = DETAILS[stock.symbol] || null;
-  const currentPrice = Number((stock as unknown as { price?: number }).price ?? 0);
+  const currentPrice = stock.price ?? 0;
 
   // no local sparkline; use reusable chart component for consistency
 

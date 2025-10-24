@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
-import cryptoData from "@/data/crypto.json";
 import { PriceChart } from "@/components/priceChart";
+import { useCrypto } from "@/hooks/useCrypto";
+import { Loader2 } from "lucide-react";
+import { use } from "react";
 
 // Inline prop typing to avoid PageProps constraint issues
 
@@ -167,10 +171,26 @@ const DETAILS: Record<string, { title: string; category: string; objective: stri
   },
 };
 
-export default async function CryptoDetailsPage({ params }: { params: Promise<{ symbol: string }> }) {
-  const { symbol } = await params;
+export default function CryptoDetailsPage({ params }: { params: Promise<{ symbol: string }> }) {
+  const { symbol } = use(params);
   const symbolParam = decodeURIComponent(symbol || "");
-  const crypto = cryptoData.crypto.find((c) => c.symbol.toLowerCase() === symbolParam.toLowerCase());
+  const { crypto: cryptoAssets, isLoading } = useCrypto();
+
+  const crypto = cryptoAssets.find((c) => c.symbol.toLowerCase() === symbolParam.toLowerCase());
+
+  if (isLoading && !crypto) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: '#2E4744' }}>
+        <div className="max-w-4xl mx-auto px-4 py-10">
+          <Link href="/stocks" className="text-gray-300 hover:text-white">← Back to Marketplace</Link>
+          <div className="flex items-center gap-2 mt-6">
+            <Loader2 className="h-6 w-6 animate-spin text-white" />
+            <h1 className="text-2xl font-bold text-white">Loading crypto data...</h1>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!crypto) {
     return (
@@ -184,7 +204,7 @@ export default async function CryptoDetailsPage({ params }: { params: Promise<{ 
   }
 
   const details = DETAILS[crypto.symbol] || null;
-  const currentPrice = Number((crypto as unknown as { price?: number }).price ?? 0);
+  const currentPrice = crypto.price ?? 0;
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#2E4744' }}>
