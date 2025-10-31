@@ -1,25 +1,38 @@
 # Stockline
-
-**Digital Assets for Everyone. No Crypto Knowledge Required.**
-
----
-
-## From Mobile Money to Global Markets
+Digital Assets for Everyone. No Crypto Knowledge Required.
+From Mobile Money to Global Markets
 
 Stockline is a product from **Mocha**, built to bridge the gap between emerging markets and the global digital economy. We believe that access to financial opportunities shouldn't be limited by geography, technical knowledge, or complex onboarding processes.
 
 ### The Problem
 
-Billions of people in emerging markets have smartphones and use mobile money every day to send payments, pay bills, and manage their finances. Yet, these same people are locked out of global investment opportunities—not because they lack the means, but because the barriers are too high:
+The Problem
 
-- **Complex crypto wallets** that require seed phrases and technical expertise
-- **Unfamiliar interfaces** designed for crypto-native users
-- **Multiple conversion steps** from local currency to crypto to assets
-- **Knowledge gaps** about blockchain, gas fees, and digital wallets
+Billions in emerging markets use mobile money every day — sending payments, buying goods, managing savings — yet remain locked out of global investment opportunities.
+
+Why?
+
+Complex crypto wallets that require seed phrases and technical know-how
+
+Interfaces built for crypto-native users, not first-timers
+
+Multiple conversion steps between local currency, crypto, and assets
+
+Knowledge gaps about gas fees, wallets, and exchanges
 
 ### Our Solution
 
-Stockline removes these barriers by meeting users where they are: **on their mobile phones, using the mobile money they already trust.**
+Stockline removes these barriers by meeting users where they are — on mobile phones, using mobile money they already trust.
+
+How It Works
+
+- Familiar entry point: Purchase digital assets using Mobile Money.
+
+- No crypto complexity: Blockchain operations are handled behind the scenes
+
+- Instant access: From cash in hand to owning digital assets in minutes
+
+- Real ownership: Each asset is backed by real tokens on the Solana blockchain**
 
 #### How It Works
 
@@ -32,25 +45,35 @@ Stockline removes these barriers by meeting users where they are: **on their mob
 4. **Real Ownership**: Every purchase is backed by real digital assets on the Solana blockchain. Users own their investments, stored securely in wallets we create and manage for them.
 
 ---
+💼 What We Offer
+🌍 Tokenized U.S. Stocks (xStocks)
 
-## What We Offer
+Own fractional shares of top global companies and indices:
+Apple · Google · Microsoft · Meta · Tesla · Amazon · S&P 500 · Nasdaq · and more
 
-### 🌍 Tokenized U.S. Stocks (xStocks)
-Own fractional shares of the world's leading companies:
-- **Tech Giants**: Apple, Google, Microsoft, Meta, NVIDIA
-- **Finance Leaders**: Coinbase, Robinhood, Circle
-- **Market Indices**: S&P 500, Nasdaq
-- **Consumer Brands**: Tesla, Amazon, Netflix
+✅ 24/7 trading
+✅ Transparent blockchain pricing
+✅ Real-time market data
 
-All represented as blockchain tokens, tradable 24/7, with transparent pricing and real-time market data.
+💰 Cryptocurrency Access
 
-### 💰 Cryptocurrency Access
-Simple access to major cryptocurrencies:
-- **Solana (SOL)**: Fast, low-cost blockchain native token
-- **Bitcoin (BTC)**: Digital gold and store of value
-- **Ethereum (ETH)**: The foundation of decentralized finance
+Access the world’s leading digital currencies without the technical barriers:
 
-No complicated exchanges. No confusing conversion rates. Just straightforward access to the world's most important digital assets.
+Solana (SOL) — Fast and affordable
+
+Bitcoin (BTC) — Digital gold
+
+Ethereum (ETH) — The foundation of DeFi
+
+📱 Built for Mobile Money Users
+
+Cash In: Send mobile money → Receive digital assets
+
+Cash Out: Convert holdings back to mobile money anytime
+
+Track Portfolio: Watch your investments grow in real time
+
+Simple UI: Designed for first-time digital asset users
 
 ### 📱 Built for Mobile Money Users
 - **Cash In**: Send mobile money, receive digital assets
@@ -62,14 +85,26 @@ No complicated exchanges. No confusing conversion rates. Just straightforward ac
 
 ## Why This Matters
 
-### Financial Inclusion at Scale
+🌍 Why It Matters
+Financial Inclusion at Scale
 
-Over **1.7 billion adults worldwide are unbanked**, yet many have access to mobile phones and mobile money. Stockline opens the door to:
+Over 1.7 billion adults remain unbanked, yet many use mobile phones daily.
+Stockline opens the door to:
 
-- **Wealth Building**: Access to assets that historically outperform local savings options
-- **Dollar Exposure**: Hedge against local currency volatility
-- **Global Participation**: Join the same markets as investors in developed economies
-- **Financial Literacy**: Learn about investing through accessible, familiar tools
+Wealth building through asset ownership
+
+Dollar exposure to hedge against local inflation
+
+Global market participation
+
+Hands-on financial literacy
+
+Technology That Disappears
+
+Users don’t need to learn about wallets, private keys, gas fees, or DeFi.
+They just need to know:
+
+Send Mobile Money → Own Digital Assets
 
 ### Technology That Disappears
 
