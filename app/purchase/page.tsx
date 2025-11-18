@@ -36,6 +36,12 @@ function PurchaseForm() {
   const walletAddress = (solanaWalletAccount as any)?.address || '';
 
   const handleFormSuccess = () => {
+    // Invalidate wallet cache to force fresh data on next wallet page visit
+    if (walletAddress && typeof window !== 'undefined') {
+      localStorage.removeItem(`wallet_cache_${walletAddress}`);
+      console.log('✅ Wallet cache invalidated after successful purchase');
+    }
+
     // Show success modal immediately
     setShowSuccessModal(true);
   };

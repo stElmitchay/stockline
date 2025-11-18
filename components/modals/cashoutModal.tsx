@@ -307,6 +307,12 @@ export function CashoutModal({
         // Don't fail the entire process if Airtable update fails
       }
 
+          // Invalidate wallet cache to force fresh balance fetch
+          if (embeddedWallet?.address && typeof window !== 'undefined') {
+            localStorage.removeItem(`wallet_cache_${embeddedWallet.address}`);
+            console.log('✅ Wallet cache invalidated after successful cashout');
+          }
+
           // Handle success for multi-instruction transaction
           setAmount('');
           setEmail('');
@@ -408,6 +414,12 @@ export function CashoutModal({
       } catch (airtableError) {
         console.error('Failed to update Airtable record:', airtableError);
         // Don't fail the entire process if Airtable update fails
+      }
+
+      // Invalidate wallet cache to force fresh balance fetch
+      if (embeddedWallet?.address && typeof window !== 'undefined') {
+        localStorage.removeItem(`wallet_cache_${embeddedWallet.address}`);
+        console.log('✅ Wallet cache invalidated after successful cashout');
       }
 
       // Reset form state and show final success receipt
