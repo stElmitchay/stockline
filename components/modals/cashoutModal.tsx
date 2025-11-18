@@ -152,7 +152,11 @@ export function CashoutModal({
   };
 
   const handleCompleteTransaction = async () => {
-    if (!embeddedWallet || !capturedFormData) return;
+    if (!embeddedWallet || !capturedFormData) {
+      setError("Missing transaction data. Please try again.");
+      setFormSubmitted(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -685,7 +689,7 @@ export function CashoutModal({
               <div className="text-center space-y-4">
                 <h3 className="text-lg font-medium text-orange-400">Transaction Details</h3>
                 <p className="text-sm text-gray-300">
-                  Amount: {capturedFormData?.amount} {capturedFormData?.selectedToken.symbol}
+                  Amount: {capturedFormData?.amount} {capturedFormData?.selectedToken?.symbol}
                 </p>
               </div>
             </div>
