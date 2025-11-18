@@ -747,71 +747,8 @@ export default function WalletPage() {
 						</div>
 					) : (
 						<div className="space-y-4">
-							{/* Native SOL Balance */}
-							{balance > 0 && (
-								<div className="space-y-4">
-									<h2 className="text-xl font-semibold text-white flex items-center gap-2">
-										<span>Native Balance</span>
-									</h2>
-									<div className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
-										style={{
-											background: '#2A2A2A',
-											border: '1px solid rgba(255, 255, 255, 0.1)',
-											boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-										}}>
-										<div className="flex items-center justify-between">
-											<div className="flex items-center gap-3">
-												<img
-													src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png"
-													alt="SOL"
-													className="w-10 h-10 rounded-full"
-													onError={(e) => {
-														const target = e.target as HTMLImageElement;
-														target.style.display = 'none';
-														const fallback = target.nextElementSibling as HTMLElement;
-														if (fallback) fallback.style.display = 'flex';
-													}}
-												/>
-												<div
-													className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center"
-													style={{ display: 'none' }}
-												>
-													<span className="text-white font-bold text-xs">SOL</span>
-												</div>
-												<div>
-													<p className="font-medium text-white">Solana</p>
-													<p className="text-sm text-gray-400">SOL</p>
-												</div>
-											</div>
-											<div className="text-right">
-												<p className="font-medium text-white">
-													{balance >= 1 ? balance.toFixed(2) : balance >= 0.01 ? balance.toFixed(4) : balance.toFixed(6)} SOL
-												</p>
-												<p className="text-sm text-gray-400">
-													{solPrice > 0
-														? (() => {
-															const value = balance * solPrice;
-															if (value >= 1) {
-																return `$${value.toFixed(2)}`;
-															} else if (value >= 0.01) {
-																return `$${value.toFixed(4)}`;
-															} else if (value > 0) {
-																return `$${value.toFixed(6)}`;
-															} else {
-																return '$0.00';
-															}
-														})()
-														: 'Price unavailable'
-													}
-												</p>
-											</div>
-										</div>
-									</div>
-								</div>
-							)}
-
 							{/* SPL Token Holdings - Grouped by type */}
-							{tokens.length > 0 ? (
+							{tokens.length > 0 || balance > 0 ? (
 								<>
 									{/* Crypto Assets Section */}
 									{(() => {
@@ -819,14 +756,74 @@ export default function WalletPage() {
 											cryptoData.crypto.some(crypto => crypto.solanaAddress === token.mint)
 										);
 
-										if (cryptoTokens.length === 0) return null;
+										// Show section if we have SOL balance or crypto tokens
+										if (cryptoTokens.length === 0 && balance === 0) return null;
 
 										return (
-											<div className="space-y-4 mt-8">
+											<div className="space-y-4">
 												<h2 className="text-xl font-semibold text-white flex items-center gap-2">
 													<span>Crypto Assets</span>
-													<span className="text-sm text-gray-400 font-normal">({cryptoTokens.length})</span>
+													<span className="text-sm text-gray-400 font-normal">({(balance > 0 ? 1 : 0) + cryptoTokens.length})</span>
 												</h2>
+
+												{/* SOL Balance */}
+												{balance > 0 && (
+													<div className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
+														style={{
+															background: '#2A2A2A',
+															border: '1px solid rgba(255, 255, 255, 0.1)',
+															boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+														}}>
+														<div className="flex items-center justify-between">
+															<div className="flex items-center gap-3">
+																<img
+																	src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png"
+																	alt="SOL"
+																	className="w-10 h-10 rounded-full"
+																	onError={(e) => {
+																		const target = e.target as HTMLImageElement;
+																		target.style.display = 'none';
+																		const fallback = target.nextElementSibling as HTMLElement;
+																		if (fallback) fallback.style.display = 'flex';
+																	}}
+																/>
+																<div
+																	className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center"
+																	style={{ display: 'none' }}
+																>
+																	<span className="text-white font-bold text-xs">SOL</span>
+																</div>
+																<div>
+																	<p className="font-medium text-white">Solana</p>
+																	<p className="text-sm text-gray-400">SOL</p>
+																</div>
+															</div>
+															<div className="text-right">
+																<p className="font-medium text-white">
+																	{balance >= 1 ? balance.toFixed(2) : balance >= 0.01 ? balance.toFixed(4) : balance.toFixed(6)} SOL
+																</p>
+																<p className="text-sm text-gray-400">
+																	{solPrice > 0
+																		? (() => {
+																			const value = balance * solPrice;
+																			if (value >= 1) {
+																				return `$${value.toFixed(2)}`;
+																			} else if (value >= 0.01) {
+																				return `$${value.toFixed(4)}`;
+																			} else if (value > 0) {
+																				return `$${value.toFixed(6)}`;
+																			} else {
+																				return '$0.00';
+																			}
+																		})()
+																		: 'Price unavailable'
+																	}
+																</p>
+															</div>
+														</div>
+													</div>
+												)}
+
 												{cryptoTokens.map((token, index) => (
 													<div key={index} className="relative overflow-hidden rounded-2xl p-6 transition-all duration-300"
 														style={{
