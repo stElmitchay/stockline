@@ -1,0 +1,1 @@
+(()=>{"use strict";self.fallback=async e=>{switch(e.destination){case"document":return await caches.match("/offline",{ignoreSearch:!0})||new Response("Offline page not available",{status:503,statusText:"Service Unavailable"});case"image":case"audio":case"video":case"font":case"":0;break;default:return Response.error()}return Response.error()}})();
