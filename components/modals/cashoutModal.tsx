@@ -60,6 +60,12 @@ export function CashoutModal({
   const [mobileNumber, setMobileNumber] = useState("");
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [finalSuccess, setFinalSuccess] = useState<{ transactionHash: string } | null>(null);
+  const [capturedFormData, setCapturedFormData] = useState<{
+    amount: string;
+    email: string;
+    mobileNumber: string;
+    selectedToken: TokenAccount;
+  } | null>(null);
   const { wallets } = useSolanaWallets();
   const { signTransaction } = useSignTransaction();
   const { user } = usePrivy();
@@ -134,7 +140,8 @@ export function CashoutModal({
         throw new Error('Failed to submit cashout request');
       }
 
-      // Set formSubmitted to true to proceed to transaction screen
+      // Capture form data and proceed to transaction screen
+      setCapturedFormData({ amount, email, mobileNumber, selectedToken });
       setFormSubmitted(true);
 
     } catch (err) {
@@ -145,13 +152,15 @@ export function CashoutModal({
   };
 
   const handleCompleteTransaction = async () => {
-    if (!embeddedWallet || !selectedToken) return;
+    if (!embeddedWallet || !capturedFormData) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const amountValue = parseFloat(amount);
+      // Use captured form data to ensure consistency with Airtable submission
+      const { amount: capturedAmount, email: capturedEmail, selectedToken: capturedToken } = capturedFormData;
+      const amountValue = parseFloat(capturedAmount);
 
       // Create connection with fallback to more reliable RPC
       const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://mainnet.helius-rpc.com/?api-key=demo';
@@ -160,7 +169,7 @@ export function CashoutModal({
 
       let transferInstruction;
 
-      if (selectedToken.symbol === 'SOL') {
+      if (capturedToken.symbol === 'SOL') {
         // SOL transfer
         transferInstruction = SystemProgram.transfer({
           fromPubkey: new PublicKey(embeddedWallet.address),
@@ -169,7 +178,7 @@ export function CashoutModal({
         });
       } else {
         // SPL Token transfer
-        const mintPubkey = new PublicKey(selectedToken.mint);
+        const mintPubkey = new PublicKey(capturedToken.mint);
         
         // Determine the correct program ID by checking the mint account
         let programId = TOKEN_PROGRAM_ID;
@@ -195,7 +204,7 @@ export function CashoutModal({
           programId
         );
 
-        const tokenAmount = Math.floor(amountValue * Math.pow(10, selectedToken.decimals));
+        const tokenAmount = Math.floor(amountValue * Math.pow(10, capturedToken.decimals));
 
         // Check if destination token account exists
         const toAccountInfo = await connection.getAccountInfo(toTokenAccount);
@@ -214,14 +223,14 @@ export function CashoutModal({
         }
 
         // Use transfer_checked for TOKEN_2022 tokens, regular transfer for TOKEN_PROGRAM tokens
-        const tokenTransferInstruction = programId === TOKEN_2022_PROGRAM_ID 
+        const tokenTransferInstruction = programId === TOKEN_2022_PROGRAM_ID
           ? createTransferCheckedInstruction(
               fromTokenAccount,
               mintPubkey,
               toTokenAccount,
               new PublicKey(embeddedWallet.address),
               tokenAmount,
-              selectedToken.decimals,
+              capturedToken.decimals,
               [],
               programId
             )
@@ -263,9 +272,9 @@ export function CashoutModal({
               transaction: Buffer.from(signedTransaction.serialize()).toString('base64'),
               amount: amountValue,
               userAddress: embeddedWallet.address,
-              tokenMint: selectedToken.mint,
-              tokenSymbol: selectedToken.symbol || 'Unknown',
-              tokenDecimals: selectedToken.decimals
+              tokenMint: capturedToken.mint,
+              tokenSymbol: capturedToken.symbol || 'Unknown',
+              tokenDecimals: capturedToken.decimals
             }),
           });
 
@@ -284,7 +293,7 @@ export function CashoutModal({
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            email: email,
+            email: capturedEmail,
             walletAddress: embeddedWallet.address,
             transactionHash: result.transactionHash
           })
@@ -299,6 +308,7 @@ export function CashoutModal({
           setEmail('');
           setMobileNumber('');
           setFormSubmitted(false);
+          setCapturedFormData(null);
           setLoading(false);
           setError('');
 
@@ -308,14 +318,14 @@ export function CashoutModal({
           return;
         } else {
           // Use transfer_checked for TOKEN_2022 tokens, regular transfer for TOKEN_PROGRAM tokens
-          transferInstruction = programId === TOKEN_2022_PROGRAM_ID 
+          transferInstruction = programId === TOKEN_2022_PROGRAM_ID
             ? createTransferCheckedInstruction(
                 fromTokenAccount,
                 mintPubkey,
                 toTokenAccount,
                 new PublicKey(embeddedWallet.address),
                 tokenAmount,
-                selectedToken.decimals,
+                capturedToken.decimals,
                 [],
                 programId
               )
@@ -357,13 +367,13 @@ export function CashoutModal({
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           transaction: serializedTransaction,
           amount: amountValue,
           userAddress: embeddedWallet.address,
-          tokenMint: selectedToken.mint,
-          tokenSymbol: selectedToken.symbol,
-          tokenDecimals: selectedToken.decimals
+          tokenMint: capturedToken.mint,
+          tokenSymbol: capturedToken.symbol,
+          tokenDecimals: capturedToken.decimals
         })
       });
 
@@ -386,7 +396,7 @@ export function CashoutModal({
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            email: email,
+            email: capturedEmail,
             walletAddress: embeddedWallet.address,
             transactionHash
           })
@@ -401,6 +411,7 @@ export function CashoutModal({
       setEmail("");
       setMobileNumber("");
       setFormSubmitted(false);
+      setCapturedFormData(null);
       setLoading(false);
       setFinalSuccess({ transactionHash });
       
@@ -674,7 +685,7 @@ export function CashoutModal({
               <div className="text-center space-y-4">
                 <h3 className="text-lg font-medium text-orange-400">Transaction Details</h3>
                 <p className="text-sm text-gray-300">
-                  Amount: {amount} {selectedToken?.symbol}
+                  Amount: {capturedFormData?.amount} {capturedFormData?.selectedToken.symbol}
                 </p>
               </div>
             </div>

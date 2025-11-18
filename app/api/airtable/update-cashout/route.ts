@@ -104,8 +104,13 @@ export async function POST(request: NextRequest) {
 
     // Update the record with transaction hash in Notes field
     // Status remains as 'Todo' - team will manually update after processing payment
+    // Append to existing notes to avoid overwriting any existing data
+    const existingNotes = record.fields.Notes || '';
+    const newNote = `Transaction Hash: ${transactionHash}\nBlockchain transaction completed. Awaiting fiat payment processing.`;
+    const separator = existingNotes ? '\n\n---\n\n' : '';
+
     const updatedFields = {
-      'Notes': `Transaction Hash: ${transactionHash}\nBlockchain transaction completed. Awaiting fiat payment processing.`
+      'Notes': `${existingNotes}${separator}${newNote}`
     };
 
     const result = await updateAirtableRecord(record.id, updatedFields);
