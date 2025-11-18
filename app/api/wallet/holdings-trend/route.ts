@@ -26,8 +26,10 @@ async function fetchTokenAccounts(connection: Connection, owner: PublicKey) {
   return results;
 }
 
-async function fetchPrices(addresses: string[]) {
-  const resp = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/birdeye`, {
+async function fetchPrices(addresses: string[], requestUrl: string) {
+  // Construct absolute URL for Edge runtime compatibility
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(requestUrl).origin;
+  const resp = await fetch(`${baseUrl}/api/birdeye`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ addresses })
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
     // SPL balances
     const tokenBalances = await fetchTokenAccounts(connection, owner);
     const allMints = Array.from(new Set([SOL_MINT, ...tokenBalances.map(t => t.mint)]));
-    const prices = await fetchPrices(allMints);
+    const prices = await fetchPrices(allMints, request.url);
 
     const positions = [
       { mint: SOL_MINT, amount: solAmount, price: prices[SOL_MINT] || 0 },

@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     // Find the pending cashout record
     const record = await findCashoutRecord(email, walletAddress);
-    
+
     if (!record) {
       return NextResponse.json(
         { error: 'No pending cashout record found for this user' },
@@ -102,9 +102,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update the record with status (Transaction Hash field doesn't exist in table)
+    // Update the record with transaction hash in Notes field
+    // Status remains as 'Todo' - team will manually update after processing payment
     const updatedFields = {
-      'Status': 'Completed'
+      'Notes': `Transaction Hash: ${transactionHash}\nBlockchain transaction completed. Awaiting fiat payment processing.`
     };
 
     const result = await updateAirtableRecord(record.id, updatedFields);
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       recordId: result.id,
-      message: 'Cashout record updated successfully'
+      message: 'Transaction hash recorded successfully'
     });
 
   } catch (error) {

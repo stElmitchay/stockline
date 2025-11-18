@@ -40,8 +40,6 @@ interface CashoutModalProps {
   onClose: () => void;
   userBalance: number;
   tokens: TokenAccount[];
-  onFormSubmitted?: (data: any) => void;
-  pendingCashoutData?: any;
 }
 
 // Your company wallet address (replace with actual address)
@@ -53,8 +51,6 @@ export function CashoutModal({
   onClose,
   userBalance,
   tokens,
-  onFormSubmitted,
-  pendingCashoutData: externalPendingData,
 }: CashoutModalProps) {
   const [amount, setAmount] = useState("");
   const [selectedToken, setSelectedToken] = useState<TokenAccount | null>(null);
@@ -63,19 +59,10 @@ export function CashoutModal({
   const [email, setEmail] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [formSubmitted, setFormSubmitted] = useState(false);
-  const [pendingCashoutData, setPendingCashoutData] = useState<any>(null);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [finalSuccess, setFinalSuccess] = useState<{ transactionHash: string } | null>(null);
   const { wallets } = useSolanaWallets();
   const { signTransaction } = useSignTransaction();
   const { user } = usePrivy();
-  
-  // Initialize with external pending data if available
-  useEffect(() => {
-    if (externalPendingData) {
-      setPendingCashoutData(externalPendingData);
-    }
-  }, [externalPendingData]);
 
   // Auto-fill email from Privy user data
   useEffect(() => {
@@ -147,25 +134,9 @@ export function CashoutModal({
         throw new Error('Failed to submit cashout request');
       }
 
-      // Store the cashout data for later transaction
-      const cashoutData = {
-        amount: amountValue,
-        selectedToken,
-        email,
-        mobileNumber
-      };
-      
-      setPendingCashoutData(cashoutData);
-      
-      // Show success message
-      setShowSuccessMessage(true);
-      
-      // Notify parent component
-      if (onFormSubmitted) {
-        onFormSubmitted(cashoutData);
-      }
-      // Do not auto-close; let user dismiss success and return to wallet manually
-      
+      // Set formSubmitted to true to proceed to transaction screen
+      setFormSubmitted(true);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit cashout request');
     } finally {
@@ -173,26 +144,14 @@ export function CashoutModal({
     }
   };
 
-  const handleCloseSuccessAndExit = () => {
-    // Reset local form state but keep parent's pending data
-    setShowSuccessMessage(false);
-    setFormSubmitted(false);
-    setAmount("");
-    setEmail("");
-    setMobileNumber("");
-    setSelectedToken(null);
-    onClose();
-  };
-
   const handleCompleteTransaction = async () => {
-    const cashoutData = externalPendingData || pendingCashoutData;
-    if (!embeddedWallet || !cashoutData) return;
+    if (!embeddedWallet || !selectedToken) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const { amount: amountValue, selectedToken } = cashoutData;
+      const amountValue = parseFloat(amount);
 
       // Create connection with fallback to more reliable RPC
       const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://mainnet.helius-rpc.com/?api-key=demo';
@@ -325,7 +284,7 @@ export function CashoutModal({
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            email: pendingCashoutData.email,
+            email: email,
             walletAddress: embeddedWallet.address,
             transactionHash: result.transactionHash
           })
@@ -334,23 +293,18 @@ export function CashoutModal({
         console.error('Failed to update Airtable record:', airtableError);
         // Don't fail the entire process if Airtable update fails
       }
-          
+
           // Handle success for multi-instruction transaction
           setAmount('');
           setEmail('');
           setMobileNumber('');
           setFormSubmitted(false);
-          setPendingCashoutData(null);
           setLoading(false);
           setError('');
 
           // Show final success receipt instead of closing immediately
           console.log(`Transaction successful! Hash: ${result.transactionHash}`);
           setFinalSuccess({ transactionHash: result.transactionHash });
-          // Also notify parent that the pending flow is complete
-          if (onFormSubmitted) {
-            onFormSubmitted(null);
-          }
           return;
         } else {
           // Use transfer_checked for TOKEN_2022 tokens, regular transfer for TOKEN_PROGRAM tokens
@@ -423,7 +377,7 @@ export function CashoutModal({
 
       const { transactionHash } = await response.json();
       console.log('Cashout successful:', transactionHash);
-      
+
       // Update Airtable record with transaction hash
       try {
         await fetch('/api/airtable/update-cashout', {
@@ -432,7 +386,7 @@ export function CashoutModal({
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            email: cashoutData.email,
+            email: email,
             walletAddress: embeddedWallet.address,
             transactionHash
           })
@@ -441,20 +395,14 @@ export function CashoutModal({
         console.error('Failed to update Airtable record:', airtableError);
         // Don't fail the entire process if Airtable update fails
       }
-      
-      // Reset form state and show final success receipt (avoid immediate close)
+
+      // Reset form state and show final success receipt
       setAmount("");
       setEmail("");
       setMobileNumber("");
       setFormSubmitted(false);
-      setPendingCashoutData(null); // Clear internal state
       setLoading(false);
       setFinalSuccess({ transactionHash });
-      
-      // Notify parent to clear pending data
-      if (onFormSubmitted) {
-        onFormSubmitted(null); // This tells the parent the transaction is complete
-      }
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Transaction failed');
@@ -463,19 +411,12 @@ export function CashoutModal({
     }
   };
 
-  // Determine if we should show the transaction screen directly
-  const showTransactionScreen = useMemo(() => {
-    return !!pendingCashoutData || !!externalPendingData;
-  }, [pendingCashoutData, externalPendingData]);
-  
-  // Remove the auto-trigger useEffect - no longer auto-process transactions
-
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={finalSuccess ? "Cashout Successful" : (showTransactionScreen ? "Complete Transaction" : "Cash Out")}
-      description={finalSuccess ? "Your cashout has been submitted successfully" : (showTransactionScreen ? "Complete your cashout transaction" : "Submit your cashout request")}
+      title={finalSuccess ? "Cashout Successful" : (formSubmitted ? "Complete Transaction" : "Cash Out")}
+      description={finalSuccess ? "Your cashout has been submitted successfully" : (formSubmitted ? "Sign your transaction to complete cashout" : "Fill out the form to initiate your cashout")}
     >
       <div className="max-w-md mx-auto p-6 rounded-2xl shadow-2xl transition-all duration-300"
            style={{
@@ -527,49 +468,8 @@ export function CashoutModal({
             <span className="text-red-300 text-sm">{error}</span>
           </div>
         )}
-        
-        {showSuccessMessage && (
-          <div className="mb-4 p-6 rounded-lg border border-green-500/30"
-               style={{
-                 background: 'rgba(16, 185, 129, 0.1)',
-                 backdropFilter: 'blur(5px)'
-               }}>
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg"
-                     style={{
-                       boxShadow: '0 4px 15px rgba(34, 197, 94, 0.4)'
-                     }}>
-                  <Check className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-green-400">Thank You! Your Request Has Been Received.</h3>
-              </div>
-              
-              <div className="space-y-3 text-gray-300">
-                <p className="text-lg">We have successfully received your cashout request.</p>
-                
-                <p className="text-sm">You will be contacted via phone call or WhatsApp to confirm and complete your transaction.</p>
-              </div>
 
-              <div className="pt-4">
-                <Button
-                  onClick={handleCloseSuccessAndExit}
-                  className="w-full font-medium py-3 rounded-lg transition-all duration-300"
-                  style={{
-                    background: 'linear-gradient(135deg, #D9FF66 0%, #B8E62E 100%)',
-                    color: '#000000',
-                    border: '1px solid rgba(217, 255, 102, 0.3)',
-                    boxShadow: '0 4px 15px rgba(217, 255, 102, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                  }}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {!finalSuccess && !showSuccessMessage && !showTransactionScreen && (
+        {!finalSuccess && !formSubmitted && (
           // Cashout Form View
           <form className="space-y-6" noValidate>
             <div className="space-y-4">
@@ -741,11 +641,11 @@ export function CashoutModal({
               {loading ? (
                 <div className="flex items-center gap-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
-                  Submitting...
+                  Processing...
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  Submit Cashout Request
+                  Cashout
                 </div>
               )}
             </Button>
@@ -756,7 +656,7 @@ export function CashoutModal({
           </form>
         )}
         
-        {!finalSuccess && !showSuccessMessage && showTransactionScreen && (
+        {!finalSuccess && formSubmitted && (
           // Transaction Confirmation View
           <div className="space-y-6">
             <div className="text-center space-y-4 mb-6">
@@ -774,7 +674,7 @@ export function CashoutModal({
               <div className="text-center space-y-4">
                 <h3 className="text-lg font-medium text-orange-400">Transaction Details</h3>
                 <p className="text-sm text-gray-300">
-                  Amount: {externalPendingData?.amount || pendingCashoutData?.amount} {externalPendingData?.selectedToken?.symbol || pendingCashoutData?.selectedToken?.symbol}
+                  Amount: {amount} {selectedToken?.symbol}
                 </p>
               </div>
             </div>

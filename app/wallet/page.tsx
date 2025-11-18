@@ -60,7 +60,6 @@ export default function WalletPage() {
 
 	const [copied, setCopied] = useState(false);
 	const [showCashoutModal, setShowCashoutModal] = useState(false);
-	const [pendingCashoutData, setPendingCashoutData] = useState<any>(null);
 
 	// Get the first Solana wallet
 	const solanaWalletAccount = user?.linkedAccounts?.find(
@@ -578,16 +577,6 @@ export default function WalletPage() {
 		return new Date(timestamp * 1000).toLocaleDateString();
 	};
 
-
-
-	const handleCashoutFormSubmitted = (data: any) => {
-		setPendingCashoutData(data);
-	};
-
-	const handleCancelPendingTransaction = () => {
-		setPendingCashoutData(null);
-	};
-
 	const openTransactionExplorer = (signature: string) => {
 		// Default to Solscan, but you can add logic to choose between explorers
 		const solscanUrl = `https://solscan.io/tx/${signature}`;
@@ -686,32 +675,14 @@ export default function WalletPage() {
 							)}
 							
 							{/* Action Button */}
-							<div className="mt-6 space-y-3">
-								{pendingCashoutData ? (
-									<>
-										<button 
-											onClick={() => setShowCashoutModal(true)}
-											className="w-full bg-orange-200 text-orange-800 rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors font-semibold hover:bg-orange-300"
-										>
-											<Clock className="h-4 w-4" />
-											<span>Complete Transaction</span>
-										</button>
-										<button 
-											onClick={handleCancelPendingTransaction}
-											className="w-full bg-gray-600 text-white rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors font-semibold hover:bg-gray-700"
-										>
-											<span>Cancel Transaction</span>
-										</button>
-									</>
-								) : (
-									<button 
-										onClick={() => setShowCashoutModal(true)}
-										className="w-full bg-[#D9FF66] text-black rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors font-semibold hover:bg-[#B8E62E]"
-									>
-										<Send className="h-4 w-4" />
-										<span>Cash Out</span>
-									</button>
-								)}
+							<div className="mt-6">
+								<button
+									onClick={() => setShowCashoutModal(true)}
+									className="w-full bg-[#D9FF66] text-black rounded-full py-3 px-4 flex items-center justify-center gap-2 transition-colors font-semibold hover:bg-[#B8E62E]"
+								>
+									<Send className="h-4 w-4" />
+									<span>Cash Out</span>
+								</button>
 							</div>
 						</div>
 					</div>
@@ -999,14 +970,12 @@ export default function WalletPage() {
 			</div>
 
 			{/* Cashout Modal */}
-							<CashoutModal
-					isOpen={showCashoutModal}
-					onClose={() => setShowCashoutModal(false)}
-					userBalance={balance}
-					tokens={tokens}
-					onFormSubmitted={handleCashoutFormSubmitted}
-					pendingCashoutData={pendingCashoutData}
-				/>
+			<CashoutModal
+				isOpen={showCashoutModal}
+				onClose={() => setShowCashoutModal(false)}
+				userBalance={balance}
+				tokens={tokens}
+			/>
 		</div>
 	);
 }
