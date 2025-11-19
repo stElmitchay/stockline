@@ -4,17 +4,42 @@
 
 /**
  * Format price as currency
- * Handles very small crypto prices properly (e.g., $0.00002)
+ * Handles very small crypto prices with subscript notation (e.g., $0.0₄1026 for $0.00001026)
  */
 export const formatPrice = (price?: number): string => {
   if (price === undefined || price === null || price === 0) {
     return '$0.00';
   }
 
-  // For very small prices (< $0.01), show up to 8 decimal places
-  if (price < 0.01) {
-    // Remove trailing zeros for cleaner display
-    return '$' + price.toFixed(8).replace(/\.?0+$/, '');
+  // For very small prices (< $0.01), use subscript notation for leading zeros
+  if (price < 0.01 && price > 0) {
+    const priceStr = price.toFixed(20); // Use high precision
+    const decimalPart = priceStr.split('.')[1];
+
+    // Count leading zeros after decimal point
+    let leadingZeros = 0;
+    for (const char of decimalPart) {
+      if (char === '0') {
+        leadingZeros++;
+      } else {
+        break;
+      }
+    }
+
+    // If there are more than 2 leading zeros, use subscript notation
+    if (leadingZeros > 2) {
+      // Get the significant digits (first 4 non-zero digits)
+      const significantDigits = decimalPart.substring(leadingZeros, leadingZeros + 4);
+      const subscriptNumber = leadingZeros.toString()
+        .split('')
+        .map(digit => String.fromCharCode(0x2080 + parseInt(digit))) // Unicode subscript numbers
+        .join('');
+
+      return `$0.0${subscriptNumber}${significantDigits}`;
+    }
+
+    // For 1-2 leading zeros, show normally with up to 6 decimal places
+    return '$' + price.toFixed(6).replace(/\.?0+$/, '');
   }
 
   // For prices between $0.01 and $1, show 4 decimal places
