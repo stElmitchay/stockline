@@ -138,10 +138,11 @@ export function StockCard({ stock }: StockCardProps) {
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden">
               {stock.logoUrl ? (
-                <img 
-                  src={stock.logoUrl} 
+                <img
+                  src={stock.logoUrl}
                   alt={`${stock.name} logo`}
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full ${stock.symbol === 'CRCLx' ? 'object-cover' : 'object-contain'}`}
+                  style={stock.symbol === 'CRCLx' ? { objectPosition: 'left center' } : {}}
                   onError={(e) => {
                     // Fallback to initials if logo fails to load
                     const target = e.target as HTMLImageElement;
